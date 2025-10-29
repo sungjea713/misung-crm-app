@@ -1,11 +1,12 @@
 import { handleLogin, handleChangePassword, handleGetCurrentUser } from './auth';
 import { initializeUsers } from './db/init';
-import { createServer } from 'vite';
 
 const PORT = process.env.PORT || 3001;
 const isDevelopment = process.env.NODE_ENV !== 'production';
 
 console.log('🚀 Starting Misung E&C CRM Server...');
+console.log('📁 Environment:', isDevelopment ? 'development' : 'production');
+console.log('🔌 Port:', PORT);
 
 // Initialize users from CSV
 initializeUsers().catch((err) => {
@@ -15,6 +16,7 @@ initializeUsers().catch((err) => {
 // Create Vite server in middleware mode (only in development)
 let vite: any = null;
 if (isDevelopment) {
+  const { createServer } = await import('vite');
   vite = await createServer({
     server: { middlewareMode: true },
     appType: 'spa',
@@ -22,8 +24,9 @@ if (isDevelopment) {
   });
 }
 
-Bun.serve({
+const server = Bun.serve({
   port: PORT,
+  hostname: '0.0.0.0', // Bind to all network interfaces for Render
   async fetch(req) {
     const url = new URL(req.url);
     const pathname = url.pathname;
@@ -153,5 +156,5 @@ Bun.serve({
   },
 });
 
-console.log(`✅ Server running at http://localhost:${PORT}`);
-console.log(`📁 Environment: ${process.env.NODE_ENV || 'development'}`);
+console.log(`✅ Server running on 0.0.0.0:${server.port}`);
+console.log(`🌍 Access at http://localhost:${server.port}`);

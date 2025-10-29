@@ -6,17 +6,20 @@ WORKDIR /app
 # Copy package files
 COPY package.json bun.lockb* ./
 
-# Install dependencies
+# Install ALL dependencies (including devDependencies for build)
 RUN bun install --frozen-lockfile
 
 # Copy source code
 COPY . .
 
-# Build frontend (optional, can be done at runtime)
-# RUN bun build src/frontend/index.tsx --outdir=dist --target=browser
+# Build frontend with Vite
+RUN bun run build
 
-# Expose port
-EXPOSE 3001
+# Set production environment
+ENV NODE_ENV=production
 
-# Start server
-CMD ["bun", "run", "src/server/index.ts"]
+# Use PORT from environment variable (Render provides this)
+ENV PORT=${PORT:-10000}
+
+# Start server with production settings
+CMD ["bun", "run", "start"]
