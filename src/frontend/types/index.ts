@@ -102,3 +102,96 @@ export interface WeeklyPlanFilters {
   page?: number;
   limit?: number;
 }
+
+// Daily Plan Types
+export interface DailyPlan {
+  id: number;
+  user_id: string;
+  cms_id?: number;
+  cms_code?: string;
+  site_name?: string;
+  site_address?: string;
+  sales_manager?: string;
+  construction_manager?: string;
+  activity_construction_sales: boolean;
+  activity_site_additional_sales: boolean;
+  activity_site_support: boolean;
+  created_at: string;
+  updated_at: string;
+  created_by: string;
+  updated_by?: string;
+}
+
+export interface DailyPlanFormData {
+  cms_id?: number;
+  cms_code?: string;
+  site_name?: string;
+  site_address?: string;
+  sales_manager?: string;
+  construction_manager?: string;
+  activity_construction_sales: boolean;
+  activity_site_additional_sales: boolean;
+  activity_site_support: boolean;
+}
+
+export interface DailyPlanFilters {
+  user_id?: string;
+  year: number;
+  month: number;
+  page?: number;
+  limit?: number;
+}
+
+// Activity Stats Types
+export interface ActivityStats {
+  construction: number;
+  additional: number;
+  support: number;
+  total: number;
+}
+
+export interface MonthlyActivityStats {
+  year: number;
+  month: number;
+  plan: ActivityStats;
+  actual: ActivityStats;
+  achievement: ActivityStats;
+}
+
+export interface ActivitySummary {
+  plan: ActivityStats;
+  actual: ActivityStats;
+  achievement: ActivityStats;
+}
+
+export interface ActivityStatsResponse {
+  success: boolean;
+  data?: {
+    monthly: MonthlyActivityStats[];
+    summary: ActivitySummary;
+  };
+  message?: string;
+}
+
+// Sales Stats Types
+export interface MonthlySalesStats {
+  month: number;
+  revenue: number;      // 확정 매출 (원 단위)
+  cost: number;         // 확정 매입 (원 단위)
+  profit: number;       // 매출 이익 (원 단위)
+}
+
+export interface SalesSummary {
+  revenue: number;
+  cost: number;
+  profit: number;
+}
+
+export interface SalesStatsResponse {
+  success: boolean;
+  data?: {
+    monthly: MonthlySalesStats[];
+    summary: SalesSummary;
+  };
+  message?: string;
+}

@@ -148,7 +148,7 @@ export default function App() {
       case '/performance/weekly-plan':
         return <WeeklyPlan user={user} />;
       case '/performance/daily-plan':
-        return <DailyPlan />;
+        return <DailyPlan user={user} />;
       case '/performance/sales-activity':
         return <SalesActivity />;
       case '/performance/invoice':
@@ -156,7 +156,7 @@ export default function App() {
       case '/performance/collection':
         return <Collection />;
       case '/analytics/monthly-sales':
-        return <MonthlySales />;
+        return <MonthlySales user={user} />;
       case '/analytics/order-achievement':
         return <OrderAchievement />;
       case '/analytics/collection-status':
@@ -164,7 +164,7 @@ export default function App() {
       case '/analytics/cost-efficiency':
         return <CostEfficiency />;
       case '/analytics/activity-status':
-        return <ActivityStatus />;
+        return <ActivityStatus user={user} />;
       default:
         return <Dashboard user={user} />;
     }

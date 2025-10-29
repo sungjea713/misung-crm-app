@@ -9,6 +9,17 @@ import {
   deleteWeeklyPlan,
   getAllUsers,
 } from './weekly-plans';
+import {
+  searchConstructionSites as searchSitesForDaily,
+  getDailyPlans,
+  getDailyPlan,
+  createDailyPlan,
+  updateDailyPlan,
+  deleteDailyPlan,
+  getAllUsers as getAllUsersForDaily,
+} from './daily-plans';
+import { getActivityStats } from './activity-stats';
+import { getSalesStats } from './sales-stats';
 
 const PORT = process.env.PORT || 3001;
 const isDevelopment = process.env.NODE_ENV !== 'production';
@@ -36,6 +47,7 @@ if (isDevelopment) {
 const server = Bun.serve({
   port: PORT,
   hostname: '0.0.0.0', // Bind to all network interfaces for Render
+  idleTimeout: 60, // 60초 타임아웃 (기본 10초에서 증가)
   async fetch(req) {
     const url = new URL(req.url);
     const pathname = url.pathname;
@@ -162,6 +174,111 @@ const server = Bun.serve({
 
         const id = parseInt(pathname.split('/').pop()!);
         const result = await deleteWeeklyPlan(id, user.user.id, user.user.role);
+        return Response.json(result, { status: result.success ? 200 : 400 });
+      }
+
+      // Daily Plans API Routes
+      if (pathname === '/api/daily-plans' && req.method === 'GET') {
+        const token = req.headers.get('Authorization')?.replace('Bearer ', '');
+        if (!token) {
+          return Response.json({ success: false, message: 'Unauthorized' }, { status: 401 });
+        }
+
+        const filters = {
+          user_id: url.searchParams.get('user_id') || undefined,
+          year: parseInt(url.searchParams.get('year') || new Date().getFullYear().toString()),
+          month: parseInt(url.searchParams.get('month') || (new Date().getMonth() + 1).toString()),
+          page: parseInt(url.searchParams.get('page') || '1'),
+          limit: parseInt(url.searchParams.get('limit') || '20'),
+        };
+
+        const result = await getDailyPlans(filters);
+        return Response.json(result, { status: result.success ? 200 : 400 });
+      }
+
+      if (pathname === '/api/daily-plans' && req.method === 'POST') {
+        const token = req.headers.get('Authorization')?.replace('Bearer ', '');
+        if (!token) {
+          return Response.json({ success: false, message: 'Unauthorized' }, { status: 401 });
+        }
+
+        const user = await handleGetCurrentUser(token);
+        if (!user.success || !user.user) {
+          return Response.json({ success: false, message: 'Unauthorized' }, { status: 401 });
+        }
+
+        const body = await req.json();
+        const result = await createDailyPlan(body, user.user.id, user.user.name);
+        return Response.json(result, { status: result.success ? 201 : 400 });
+      }
+
+      if (pathname.match(/^\/api\/daily-plans\/\d+$/) && req.method === 'GET') {
+        const id = parseInt(pathname.split('/').pop()!);
+        const result = await getDailyPlan(id);
+        return Response.json(result, { status: result.success ? 200 : 404 });
+      }
+
+      if (pathname.match(/^\/api\/daily-plans\/\d+$/) && req.method === 'PUT') {
+        const token = req.headers.get('Authorization')?.replace('Bearer ', '');
+        if (!token) {
+          return Response.json({ success: false, message: 'Unauthorized' }, { status: 401 });
+        }
+
+        const user = await handleGetCurrentUser(token);
+        if (!user.success || !user.user) {
+          return Response.json({ success: false, message: 'Unauthorized' }, { status: 401 });
+        }
+
+        const id = parseInt(pathname.split('/').pop()!);
+        const body = await req.json();
+        const result = await updateDailyPlan(id, body, user.user.id, user.user.name, user.user.role);
+        return Response.json(result, { status: result.success ? 200 : 400 });
+      }
+
+      if (pathname.match(/^\/api\/daily-plans\/\d+$/) && req.method === 'DELETE') {
+        const token = req.headers.get('Authorization')?.replace('Bearer ', '');
+        if (!token) {
+          return Response.json({ success: false, message: 'Unauthorized' }, { status: 401 });
+        }
+
+        const user = await handleGetCurrentUser(token);
+        if (!user.success || !user.user) {
+          return Response.json({ success: false, message: 'Unauthorized' }, { status: 401 });
+        }
+
+        const id = parseInt(pathname.split('/').pop()!);
+        const result = await deleteDailyPlan(id, user.user.id, user.user.role);
+        return Response.json(result, { status: result.success ? 200 : 400 });
+      }
+
+      // Activity Stats API Route
+      if (pathname === '/api/activity-stats' && req.method === 'GET') {
+        const token = req.headers.get('Authorization')?.replace('Bearer ', '');
+        if (!token) {
+          return Response.json({ success: false, message: 'Unauthorized' }, { status: 401 });
+        }
+
+        const year = parseInt(url.searchParams.get('year') || new Date().getFullYear().toString());
+        const userId = url.searchParams.get('user_id') || undefined;
+        const result = await getActivityStats(year, userId);
+        return Response.json(result, { status: result.success ? 200 : 400 });
+      }
+
+      // Sales Stats API Route
+      if (pathname === '/api/sales-stats' && req.method === 'GET') {
+        const token = req.headers.get('Authorization')?.replace('Bearer ', '');
+        if (!token) {
+          return Response.json({ success: false, message: 'Unauthorized' }, { status: 401 });
+        }
+
+        const year = parseInt(url.searchParams.get('year') || new Date().getFullYear().toString());
+        const userName = url.searchParams.get('user_name');
+
+        if (!userName) {
+          return Response.json({ success: false, message: 'user_name parameter is required' }, { status: 400 });
+        }
+
+        const result = await getSalesStats(year, userName);
         return Response.json(result, { status: result.success ? 200 : 400 });
       }
 
