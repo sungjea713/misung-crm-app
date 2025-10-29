@@ -5,6 +5,10 @@ import path from 'path';
 export default defineConfig({
   plugins: [react()],
   root: 'src/frontend',
+  build: {
+    outDir: '../../dist',
+    emptyOutDir: true,
+  },
   server: {
     port: 3001,
     proxy: {
