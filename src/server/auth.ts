@@ -132,8 +132,26 @@ export async function handleChangePassword(request: ChangePasswordRequest) {
 export async function handleGetCurrentUser(token: string) {
   try {
     // Decode token (simple base64 decode)
-    const payload = JSON.parse(Buffer.from(token, 'base64').toString());
+    let payload;
+    try {
+      const decoded = Buffer.from(token, 'base64').toString('utf8');
+      payload = JSON.parse(decoded);
+    } catch (decodeError) {
+      console.error('Token decode error:', decodeError, 'Token:', token);
+      return {
+        success: false,
+        message: '유효하지 않은 토큰입니다.',
+      };
+    }
+
     const userId = payload.userId;
+
+    if (!userId) {
+      return {
+        success: false,
+        message: '토큰에 사용자 ID가 없습니다.',
+      };
+    }
 
     // Get user from database
     const { data: user, error } = await supabase

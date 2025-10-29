@@ -60,10 +60,14 @@ export default function App() {
       if (data.success && data.user) {
         setUser(data.user);
 
-        // Save session if auto_login is enabled
-        if (credentials.auto_login && data.token) {
-          localStorage.setItem('crm_user', JSON.stringify(data.user));
+        // Always save token in localStorage for API calls
+        if (data.token) {
           localStorage.setItem('crm_token', data.token);
+        }
+
+        // Save user info if auto_login is enabled
+        if (credentials.auto_login) {
+          localStorage.setItem('crm_user', JSON.stringify(data.user));
         }
 
         // Check if password change is required
@@ -142,7 +146,7 @@ export default function App() {
       case '/':
         return <Dashboard user={user} />;
       case '/performance/weekly-plan':
-        return <WeeklyPlan />;
+        return <WeeklyPlan user={user} />;
       case '/performance/daily-plan':
         return <DailyPlan />;
       case '/performance/sales-activity':

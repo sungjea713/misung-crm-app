@@ -50,7 +50,7 @@ const menuItems: MenuItem[] = [
       },
       {
         id: 'daily-plan',
-        label: '일일 업무 계획',
+        label: '일일 업무 일지',
         icon: CalendarDays,
         path: '/performance/daily-plan',
       },

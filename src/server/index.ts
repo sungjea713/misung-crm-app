@@ -1,5 +1,14 @@
 import { handleLogin, handleChangePassword, handleGetCurrentUser } from './auth';
 import { initializeUsers } from './db/init';
+import {
+  searchConstructionSites,
+  getWeeklyPlans,
+  getWeeklyPlan,
+  createWeeklyPlan,
+  updateWeeklyPlan,
+  deleteWeeklyPlan,
+  getAllUsers,
+} from './weekly-plans';
 
 const PORT = process.env.PORT || 3001;
 const isDevelopment = process.env.NODE_ENV !== 'production';
@@ -74,6 +83,103 @@ const server = Bun.serve({
         }
         const result = await handleGetCurrentUser(token);
         return Response.json(result, { status: result.success ? 200 : 401 });
+      }
+
+      // Weekly Plans API
+      if (pathname === '/api/construction-sites/search' && req.method === 'GET') {
+        const query = url.searchParams.get('q') || '';
+        const result = await searchConstructionSites(query);
+        return Response.json(result, { status: result.success ? 200 : 400 });
+      }
+
+      if (pathname === '/api/weekly-plans' && req.method === 'GET') {
+        const token = req.headers.get('Authorization')?.replace('Bearer ', '');
+        if (!token) {
+          return Response.json({ success: false, message: 'Unauthorized' }, { status: 401 });
+        }
+
+        const filters = {
+          user_id: url.searchParams.get('user_id') || undefined,
+          year: parseInt(url.searchParams.get('year') || new Date().getFullYear().toString()),
+          month: parseInt(url.searchParams.get('month') || (new Date().getMonth() + 1).toString()),
+          page: parseInt(url.searchParams.get('page') || '1'),
+          limit: parseInt(url.searchParams.get('limit') || '20'),
+        };
+
+        const result = await getWeeklyPlans(filters);
+        return Response.json(result, { status: result.success ? 200 : 400 });
+      }
+
+      if (pathname === '/api/weekly-plans' && req.method === 'POST') {
+        const token = req.headers.get('Authorization')?.replace('Bearer ', '');
+        if (!token) {
+          return Response.json({ success: false, message: 'Unauthorized' }, { status: 401 });
+        }
+
+        const user = await handleGetCurrentUser(token);
+        if (!user.success || !user.user) {
+          return Response.json({ success: false, message: 'Unauthorized' }, { status: 401 });
+        }
+
+        const body = await req.json();
+        const result = await createWeeklyPlan(body, user.user.id, user.user.name);
+        return Response.json(result, { status: result.success ? 201 : 400 });
+      }
+
+      if (pathname.match(/^\/api\/weekly-plans\/\d+$/) && req.method === 'GET') {
+        const id = parseInt(pathname.split('/').pop()!);
+        const result = await getWeeklyPlan(id);
+        return Response.json(result, { status: result.success ? 200 : 404 });
+      }
+
+      if (pathname.match(/^\/api\/weekly-plans\/\d+$/) && req.method === 'PUT') {
+        const token = req.headers.get('Authorization')?.replace('Bearer ', '');
+        if (!token) {
+          return Response.json({ success: false, message: 'Unauthorized' }, { status: 401 });
+        }
+
+        const user = await handleGetCurrentUser(token);
+        if (!user.success || !user.user) {
+          return Response.json({ success: false, message: 'Unauthorized' }, { status: 401 });
+        }
+
+        const id = parseInt(pathname.split('/').pop()!);
+        const body = await req.json();
+        const result = await updateWeeklyPlan(id, body, user.user.id, user.user.name, user.user.role);
+        return Response.json(result, { status: result.success ? 200 : 400 });
+      }
+
+      if (pathname.match(/^\/api\/weekly-plans\/\d+$/) && req.method === 'DELETE') {
+        const token = req.headers.get('Authorization')?.replace('Bearer ', '');
+        if (!token) {
+          return Response.json({ success: false, message: 'Unauthorized' }, { status: 401 });
+        }
+
+        const user = await handleGetCurrentUser(token);
+        if (!user.success || !user.user) {
+          return Response.json({ success: false, message: 'Unauthorized' }, { status: 401 });
+        }
+
+        const id = parseInt(pathname.split('/').pop()!);
+        const result = await deleteWeeklyPlan(id, user.user.id, user.user.role);
+        return Response.json(result, { status: result.success ? 200 : 400 });
+      }
+
+      if (pathname === '/api/users' && req.method === 'GET') {
+        const authHeader = req.headers.get('Authorization');
+        const token = authHeader?.replace('Bearer ', '').trim();
+
+        if (!token || token === 'null' || token === 'undefined') {
+          return Response.json({ success: false, message: 'Unauthorized - No token' }, { status: 401 });
+        }
+
+        const user = await handleGetCurrentUser(token);
+        if (!user.success || !user.user || user.user.role !== 'admin') {
+          return Response.json({ success: false, message: 'Admin only' }, { status: 403 });
+        }
+
+        const result = await getAllUsers();
+        return Response.json(result, { status: result.success ? 200 : 400 });
       }
 
       return Response.json({ success: false, message: 'API route not found' }, { status: 404 });

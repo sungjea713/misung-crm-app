@@ -48,3 +48,57 @@ export interface PageProps {
   title: string;
   description?: string;
 }
+
+// Construction Management Types
+export interface ConstructionSite {
+  id: number;
+  cms: string;
+  site_name: string;
+  site_address: string;
+  client: string;
+  department: string;
+  sales_manager: string;
+  construction_manager: string;
+  order_month?: string;
+  order_amount?: number;
+  status?: string;
+}
+
+// Weekly Plan Types
+export interface WeeklyPlan {
+  id: number;
+  user_id: string;
+  cms_id?: number;
+  cms_code?: string;
+  site_name?: string;
+  site_address?: string;
+  sales_manager?: string;
+  construction_manager?: string;
+  activity_construction_sales: boolean;
+  activity_site_additional_sales: boolean;
+  activity_site_support: boolean;
+  created_at: string;
+  updated_at: string;
+  created_by: string;
+  updated_by?: string;
+}
+
+export interface WeeklyPlanFormData {
+  cms_id?: number;
+  cms_code?: string;
+  site_name?: string;
+  site_address?: string;
+  sales_manager?: string;
+  construction_manager?: string;
+  activity_construction_sales: boolean;
+  activity_site_additional_sales: boolean;
+  activity_site_support: boolean;
+}
+
+export interface WeeklyPlanFilters {
+  user_id?: string;
+  year: number;
+  month: number;
+  page?: number;
+  limit?: number;
+}
