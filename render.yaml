@@ -4,7 +4,7 @@ services:
     name: misung-crm-app
     runtime: docker
     plan: free
-    buildCommand: curl -fsSL https://bun.sh/install | bash && export PATH=$HOME/.bun/bin:$PATH && bun install
+    buildCommand: curl -fsSL https://bun.sh/install | bash && export PATH=$HOME/.bun/bin:$PATH && bun install && bun run build
     startCommand: bun run src/server/index.ts
     envVars:
       - key: NODE_ENV
