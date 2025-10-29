@@ -195,3 +195,52 @@ export interface SalesStatsResponse {
   };
   message?: string;
 }
+
+// Sales Activity Types
+export interface SalesActivity {
+  id: number;
+  user_id: string;
+  activity_date: string;
+  activity_type: 'estimate' | 'contract';
+  site_type: 'existing' | 'new';
+  cms_id?: number;
+  cms_code?: string;
+  site_name?: string;
+  site_address?: string;
+  client?: string;
+  amount?: number;
+  execution_rate?: number;
+  attachments: string[];
+  created_at: string;
+  updated_at: string;
+  created_by: string;
+  updated_by?: string;
+  users?: {
+    name: string;
+    department: string;
+  };
+}
+
+export interface SalesActivityFormData {
+  activity_date: string;
+  activity_type: 'estimate' | 'contract';
+  site_type: 'existing' | 'new';
+  cms_id?: number;
+  cms_code?: string;
+  site_name?: string;
+  site_address?: string;
+  client?: string;
+  amount?: number;
+  execution_rate?: number;
+  attachments?: string[];
+}
+
+export interface SalesActivityFilters {
+  user_id?: string;
+  year: number;
+  month: number;
+  activity_type?: string;
+  site_type?: string;
+  page?: number;
+  limit?: number;
+}

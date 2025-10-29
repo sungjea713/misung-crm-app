@@ -80,6 +80,12 @@ const menuItems: MenuItem[] = [
     icon: BarChart3,
     children: [
       {
+        id: 'activity-status',
+        label: '영업/현장 관리 실행',
+        icon: Activity,
+        path: '/analytics/activity-status',
+      },
+      {
         id: 'monthly-sales',
         label: '월별매출 및 목표달성',
         icon: TrendingUp,
@@ -102,12 +108,6 @@ const menuItems: MenuItem[] = [
         label: '원가 투입 효율 관리',
         icon: DollarSign,
         path: '/analytics/cost-efficiency',
-      },
-      {
-        id: 'activity-status',
-        label: '영업/현장 관리 실행',
-        icon: Activity,
-        path: '/analytics/activity-status',
       },
     ],
   },

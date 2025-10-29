@@ -38,7 +38,7 @@ export function DailyPlanTable({ plans, onEdit, pagination, onPageChange }: Dail
     return (
       <div className="card">
         <div className="flex flex-col items-center justify-center py-20 text-gray-text">
-          <p className="text-lg mb-2">등록된 일일 일지이 없습니다.</p>
+          <p className="text-lg mb-2">등록된 일일 일지가 없습니다.</p>
           <p className="text-sm">"새로 작성" 버튼을 눌러 계획을 등록하세요.</p>
         </div>
       </div>

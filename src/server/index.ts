@@ -20,6 +20,16 @@ import {
 } from './daily-plans';
 import { getActivityStats } from './activity-stats';
 import { getSalesStats } from './sales-stats';
+import { getOrderStats } from './order-stats';
+import {
+  searchConstructionSites as searchSitesForSales,
+  getSalesActivities,
+  getSalesActivity,
+  createSalesActivity,
+  updateSalesActivity,
+  deleteSalesActivity,
+  getAllUsers as getAllUsersForSales,
+} from './sales-activities';
 
 const PORT = process.env.PORT || 3001;
 const isDevelopment = process.env.NODE_ENV !== 'production';
@@ -280,6 +290,177 @@ const server = Bun.serve({
 
         const result = await getSalesStats(year, userName);
         return Response.json(result, { status: result.success ? 200 : 400 });
+      }
+
+      // Order Stats API Route (수주 실적)
+      if (pathname === '/api/order-stats' && req.method === 'GET') {
+        const token = req.headers.get('Authorization')?.replace('Bearer ', '');
+        if (!token) {
+          return Response.json({ success: false, message: 'Unauthorized' }, { status: 401 });
+        }
+
+        const year = parseInt(url.searchParams.get('year') || new Date().getFullYear().toString());
+        const userName = url.searchParams.get('user_name');
+
+        if (!userName) {
+          return Response.json({ success: false, message: 'user_name parameter is required' }, { status: 400 });
+        }
+
+        console.log('GET /api/order-stats - Year:', year, 'User:', userName);
+
+        const result = await getOrderStats(year, userName);
+        return Response.json(result, { status: result.success ? 200 : 400 });
+      }
+
+      // Sales Activities API Routes
+      // Search construction sites for sales activities
+      if (pathname === '/api/sales-activities/construction-sites/search' && req.method === 'GET') {
+        const token = req.headers.get('Authorization')?.replace('Bearer ', '');
+        if (!token) {
+          return Response.json({ success: false, message: 'Unauthorized' }, { status: 401 });
+        }
+
+        const query = url.searchParams.get('q') || '';
+        const result = await searchSitesForSales(query);
+        return Response.json(result, { status: result.success ? 200 : 400 });
+      }
+
+      // Get all users for sales activities (admin only)
+      if (pathname === '/api/sales-activities/users' && req.method === 'GET') {
+        const token = req.headers.get('Authorization')?.replace('Bearer ', '');
+        if (!token) {
+          return Response.json({ success: false, message: 'Unauthorized' }, { status: 401 });
+        }
+
+        const result = await handleGetCurrentUser(token);
+        console.log('GET /api/sales-activities/users - Result:', result);
+        if (!result.success || !result.user) {
+          return Response.json({ success: false, message: 'Unauthorized' }, { status: 401 });
+        }
+
+        const user = result.user;
+        console.log('User:', user.name, 'Role:', user.role);
+        if (user.role !== 'admin') {
+          console.log('Access denied - user is not admin');
+          return Response.json({ success: false, message: 'Admin only' }, { status: 403 });
+        }
+
+        const usersResult = await getAllUsersForSales();
+        return Response.json(usersResult, { status: usersResult.success ? 200 : 400 });
+      }
+
+      // Get all sales activities
+      if (pathname === '/api/sales-activities' && req.method === 'GET') {
+        const token = req.headers.get('Authorization')?.replace('Bearer ', '');
+        if (!token) {
+          return Response.json({ success: false, message: 'Unauthorized' }, { status: 401 });
+        }
+
+        const result = await handleGetCurrentUser(token);
+        if (!result.success || !result.user) {
+          return Response.json({ success: false, message: 'Unauthorized' }, { status: 401 });
+        }
+
+        const user = result.user;
+
+        const filters = {
+          user_id: url.searchParams.get('user_id') || undefined,
+          year: parseInt(url.searchParams.get('year') || new Date().getFullYear().toString()),
+          month: parseInt(url.searchParams.get('month') || (new Date().getMonth() + 1).toString()),
+          activity_type: url.searchParams.get('activity_type') || undefined,
+          site_type: url.searchParams.get('site_type') || undefined,
+          page: parseInt(url.searchParams.get('page') || '1'),
+          limit: parseInt(url.searchParams.get('limit') || '20'),
+        };
+
+        console.log('GET /api/sales-activities - User:', user.name, 'Role:', user.role, 'Filters:', filters);
+
+        const activitiesResult = await getSalesActivities(user.role, user.id, filters);
+        return Response.json(activitiesResult, { status: activitiesResult.success ? 200 : 400 });
+      }
+
+      // Get single sales activity
+      if (pathname.match(/^\/api\/sales-activities\/\d+$/) && req.method === 'GET') {
+        const token = req.headers.get('Authorization')?.replace('Bearer ', '');
+        if (!token) {
+          return Response.json({ success: false, message: 'Unauthorized' }, { status: 401 });
+        }
+
+        const result = await handleGetCurrentUser(token);
+        if (!result.success || !result.user) {
+          return Response.json({ success: false, message: 'Unauthorized' }, { status: 401 });
+        }
+
+        const user = result.user;
+        const id = parseInt(pathname.split('/').pop()!);
+        const activityResult = await getSalesActivity(id, user.role, user.id);
+        return Response.json(activityResult, { status: activityResult.success ? 200 : 400 });
+      }
+
+      // Create sales activity
+      if (pathname === '/api/sales-activities' && req.method === 'POST') {
+        const token = req.headers.get('Authorization')?.replace('Bearer ', '');
+        if (!token) {
+          return Response.json({ success: false, message: 'Unauthorized' }, { status: 401 });
+        }
+
+        const result = await handleGetCurrentUser(token);
+        if (!result.success || !result.user) {
+          return Response.json({ success: false, message: 'Unauthorized' }, { status: 401 });
+        }
+
+        const user = result.user;
+        const body = await req.json();
+        const activityData = {
+          ...body,
+          user_id: user.id,
+          created_by: user.name,
+        };
+
+        const createResult = await createSalesActivity(activityData);
+        return Response.json(createResult, { status: createResult.success ? 201 : 400 });
+      }
+
+      // Update sales activity
+      if (pathname.match(/^\/api\/sales-activities\/\d+$/) && req.method === 'PUT') {
+        const token = req.headers.get('Authorization')?.replace('Bearer ', '');
+        if (!token) {
+          return Response.json({ success: false, message: 'Unauthorized' }, { status: 401 });
+        }
+
+        const result = await handleGetCurrentUser(token);
+        if (!result.success || !result.user) {
+          return Response.json({ success: false, message: 'Unauthorized' }, { status: 401 });
+        }
+
+        const user = result.user;
+        const id = parseInt(pathname.split('/').pop()!);
+        const body = await req.json();
+        const activityData = {
+          ...body,
+          updated_by: user.name,
+        };
+
+        const updateResult = await updateSalesActivity(id, activityData, user.role, user.id);
+        return Response.json(updateResult, { status: updateResult.success ? 200 : 400 });
+      }
+
+      // Delete sales activity
+      if (pathname.match(/^\/api\/sales-activities\/\d+$/) && req.method === 'DELETE') {
+        const token = req.headers.get('Authorization')?.replace('Bearer ', '');
+        if (!token) {
+          return Response.json({ success: false, message: 'Unauthorized' }, { status: 401 });
+        }
+
+        const result = await handleGetCurrentUser(token);
+        if (!result.success || !result.user) {
+          return Response.json({ success: false, message: 'Unauthorized' }, { status: 401 });
+        }
+
+        const user = result.user;
+        const id = parseInt(pathname.split('/').pop()!);
+        const deleteResult = await deleteSalesActivity(id, user.role, user.id);
+        return Response.json(deleteResult, { status: deleteResult.success ? 200 : 400 });
       }
 
       if (pathname === '/api/users' && req.method === 'GET') {

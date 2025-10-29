@@ -150,7 +150,7 @@ export default function App() {
       case '/performance/daily-plan':
         return <DailyPlan user={user} />;
       case '/performance/sales-activity':
-        return <SalesActivity />;
+        return <SalesActivity user={user} />;
       case '/performance/invoice':
         return <Invoice />;
       case '/performance/collection':
@@ -158,7 +158,7 @@ export default function App() {
       case '/analytics/monthly-sales':
         return <MonthlySales user={user} />;
       case '/analytics/order-achievement':
-        return <OrderAchievement />;
+        return <OrderAchievement user={user} />;
       case '/analytics/collection-status':
         return <CollectionStatus />;
       case '/analytics/cost-efficiency':
