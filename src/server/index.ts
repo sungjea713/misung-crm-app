@@ -519,80 +519,124 @@ const server = Bun.serve({
       return new Response('Not Found', { status: 404 });
     }
 
-    // In development, use Vite middleware
-    return new Promise((resolve) => {
-      // Convert Web Request to Node.js request/response
-      const nodeReq: any = {
-        url: pathname + url.search,
-        method: req.method,
-        headers: Object.fromEntries(req.headers.entries()),
-      };
+    // Development: use Vite middleware
+    if (isDevelopment) {
+      return new Promise((resolve) => {
+        // Convert Web Request to Node.js request/response
+        const nodeReq: any = {
+          url: pathname + url.search,
+          method: req.method,
+          headers: Object.fromEntries(req.headers.entries()),
+        };
 
-      const nodeRes: any = {
-        statusCode: 200,
-        headers: {},
-        setHeader(name: string, value: string | string[]) {
-          this.headers[name] = value;
-        },
-        getHeader(name: string) {
-          return this.headers[name];
-        },
-        appendHeader(name: string, value: string) {
-          const existing = this.headers[name];
-          if (existing) {
-            this.headers[name] = Array.isArray(existing)
-              ? [...existing, value]
-              : [existing, value];
-          } else {
+        const nodeRes: any = {
+          statusCode: 200,
+          headers: {},
+          setHeader(name: string, value: string | string[]) {
             this.headers[name] = value;
-          }
-        },
-        removeHeader(name: string) {
-          delete this.headers[name];
-        },
-        hasHeader(name: string) {
-          return name in this.headers;
-        },
-        writeHead(status: number, headers?: any) {
-          this.statusCode = status;
-          if (headers) {
-            Object.entries(headers).forEach(([key, value]) => {
-              this.setHeader(key, value as string);
-            });
-          }
-        },
-        end(data: any) {
-          const headers = new Headers();
+          },
+          getHeader(name: string) {
+            return this.headers[name];
+          },
+          appendHeader(name: string, value: string) {
+            const existing = this.headers[name];
+            if (existing) {
+              this.headers[name] = Array.isArray(existing)
+                ? [...existing, value]
+                : [existing, value];
+            } else {
+              this.headers[name] = value;
+            }
+          },
+          removeHeader(name: string) {
+            delete this.headers[name];
+          },
+          hasHeader(name: string) {
+            return name in this.headers;
+          },
+          writeHead(status: number, headers?: any) {
+            this.statusCode = status;
+            if (headers) {
+              Object.entries(headers).forEach(([key, value]) => {
+                this.setHeader(key, value as string);
+              });
+            }
+          },
+          end(data: any) {
+            const headers = new Headers();
 
-          // 개발 환경에서 캐시 무효화 헤더 강제 추가
-          if (isDevelopment) {
+            // 개발 환경에서 캐시 무효화 헤더 강제 추가
             headers.set('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate');
             headers.set('Pragma', 'no-cache');
             headers.set('Expires', '0');
-          }
 
-          Object.entries(this.headers).forEach(([key, value]) => {
-            if (Array.isArray(value)) {
-              value.forEach(v => headers.append(key, v));
-            } else {
-              headers.set(key, value as string);
-            }
-          });
-          resolve(new Response(data, {
-            status: this.statusCode,
-            headers,
-          }));
-        },
-        write() {},
-      };
+            Object.entries(this.headers).forEach(([key, value]) => {
+              if (Array.isArray(value)) {
+                value.forEach(v => headers.append(key, v));
+              } else {
+                headers.set(key, value as string);
+              }
+            });
+            resolve(new Response(data, {
+              status: this.statusCode,
+              headers,
+            }));
+          },
+          write() {},
+        };
 
-      vite.middlewares(nodeReq, nodeRes, () => {
-        // Fallback to index.html for SPA
-        nodeRes.statusCode = 200;
-        nodeRes.setHeader('Content-Type', 'text/html');
-        nodeRes.end('<!DOCTYPE html><html><body><div id="root"></div><script type="module" src="/index.tsx"></script></body></html>');
+        vite.middlewares(nodeReq, nodeRes, () => {
+          // Fallback to index.html for SPA
+          nodeRes.statusCode = 200;
+          nodeRes.setHeader('Content-Type', 'text/html');
+          nodeRes.end('<!DOCTYPE html><html><body><div id="root"></div><script type="module" src="/index.tsx"></script></body></html>');
+        });
       });
-    });
+    }
+
+    // Production: Use Bun.serve with HTML import
+    // Try to serve static files from src/frontend
+    const filePath = `src/frontend${pathname}`;
+    const file = Bun.file(filePath);
+
+    if (await file.exists()) {
+      // Determine content type
+      let contentType = 'text/plain';
+      if (pathname.endsWith('.tsx') || pathname.endsWith('.ts')) {
+        contentType = 'application/javascript';
+      } else if (pathname.endsWith('.jsx') || pathname.endsWith('.js')) {
+        contentType = 'application/javascript';
+      } else if (pathname.endsWith('.css')) {
+        contentType = 'text/css';
+      } else if (pathname.endsWith('.json')) {
+        contentType = 'application/json';
+      } else if (pathname.endsWith('.svg')) {
+        contentType = 'image/svg+xml';
+      } else if (pathname.endsWith('.png')) {
+        contentType = 'image/png';
+      } else if (pathname.endsWith('.jpg') || pathname.endsWith('.jpeg')) {
+        contentType = 'image/jpeg';
+      }
+
+      return new Response(file, {
+        headers: {
+          'Content-Type': contentType,
+        },
+      });
+    }
+
+    // SPA fallback: serve index.html for all other routes
+    const indexHtml = Bun.file('src/frontend/index.html');
+    if (await indexHtml.exists()) {
+      return new Response(indexHtml, {
+        headers: {
+          'Content-Type': 'text/html',
+        },
+      });
+    }
+
+    // If index.html doesn't exist, return 404
+    return new Response('Not Found', { status: 404 });
   },
 });
 
