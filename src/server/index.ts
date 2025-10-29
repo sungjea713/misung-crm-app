@@ -129,6 +129,14 @@ const server = Bun.serve({
         hasHeader(name: string) {
           return name in this.headers;
         },
+        writeHead(status: number, headers?: any) {
+          this.statusCode = status;
+          if (headers) {
+            Object.entries(headers).forEach(([key, value]) => {
+              this.setHeader(key, value as string);
+            });
+          }
+        },
         end(data: any) {
           const headers = new Headers();
           Object.entries(this.headers).forEach(([key, value]) => {
