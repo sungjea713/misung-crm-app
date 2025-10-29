@@ -1,0 +1,100 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  * {
+    @apply border-gray-border;
+  }
+
+  body {
+    @apply bg-bg-darker text-text-primary antialiased;
+  }
+
+  html, body, #root {
+    @apply h-full w-full;
+  }
+}
+
+@layer components {
+  .btn-primary {
+    @apply bg-primary hover:bg-primary-hover text-white font-medium py-2 px-4 rounded transition-colors active:scale-95 touch-manipulation;
+  }
+
+  .btn-secondary {
+    @apply bg-bg-card hover:bg-gray-border text-text-primary font-medium py-2 px-4 rounded transition-colors border border-gray-border active:scale-95 touch-manipulation;
+  }
+
+  .input-field {
+    @apply w-full bg-gray-input text-text-primary border border-gray-border rounded px-3 py-2 focus:outline-none focus:border-primary transition-colors text-base;
+  }
+
+  .card {
+    @apply bg-bg-card rounded-lg p-4 sm:p-6 border border-gray-border;
+  }
+
+  .page-container {
+    @apply p-4 sm:p-6 h-full overflow-auto;
+  }
+
+  .page-title {
+    @apply text-xl sm:text-2xl font-bold text-white mb-4;
+  }
+
+  .page-description {
+    @apply text-gray-text mb-4 sm:mb-6 text-sm sm:text-base;
+  }
+
+  /* 터치 디바이스 최적화 */
+  @media (hover: none) {
+    .hover\:bg-gray-border:hover {
+      @apply bg-bg-card;
+    }
+    .hover\:bg-primary-hover:hover {
+      @apply bg-primary;
+    }
+    .hover\:text-white:hover {
+      @apply text-text-secondary;
+    }
+  }
+
+  /* 터치 디바이스에서 탭 하이라이트 제거 */
+  * {
+    -webkit-tap-highlight-color: transparent;
+  }
+
+  /* PWA Install Prompt Animation */
+  @keyframes slide-up {
+    from {
+      transform: translateY(100%);
+      opacity: 0;
+    }
+    to {
+      transform: translateY(0);
+      opacity: 1;
+    }
+  }
+
+  .animate-slide-up {
+    animation: slide-up 0.3s ease-out;
+  }
+}
+
+/* Custom scrollbar */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: #1a1a1a;
+}
+
+::-webkit-scrollbar-thumb {
+  background: #3d3d3d;
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: #4a4a4a;
+}

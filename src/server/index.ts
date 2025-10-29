@@ -1,0 +1,157 @@
+import { handleLogin, handleChangePassword, handleGetCurrentUser } from './auth';
+import { initializeUsers } from './db/init';
+import { createServer } from 'vite';
+
+const PORT = process.env.PORT || 3001;
+const isDevelopment = process.env.NODE_ENV !== 'production';
+
+console.log('🚀 Starting Misung E&C CRM Server...');
+
+// Initialize users from CSV
+initializeUsers().catch((err) => {
+  console.error('Failed to initialize users:', err);
+});
+
+// Create Vite server in middleware mode (only in development)
+let vite: any = null;
+if (isDevelopment) {
+  vite = await createServer({
+    server: { middlewareMode: true },
+    appType: 'spa',
+    root: 'src/frontend',
+  });
+}
+
+Bun.serve({
+  port: PORT,
+  async fetch(req) {
+    const url = new URL(req.url);
+    const pathname = url.pathname;
+
+    // Serve PWA assets directly
+    if (pathname === '/manifest.json' ||
+        pathname === '/service-worker.js' ||
+        pathname === '/icon.svg' ||
+        pathname.startsWith('/icon-')) {
+      const file = Bun.file(`public${pathname}`);
+      if (await file.exists()) {
+        return new Response(file, {
+          headers: {
+            'Content-Type':
+              pathname.endsWith('.json') ? 'application/json' :
+              pathname.endsWith('.js') ? 'application/javascript' :
+              pathname.endsWith('.svg') ? 'image/svg+xml' :
+              'text/plain',
+            'Cache-Control': pathname === '/service-worker.js'
+              ? 'no-cache' // Service worker should always be fresh
+              : 'public, max-age=3600'
+          }
+        });
+      }
+    }
+
+    // API Routes
+    if (pathname.startsWith('/api/')) {
+      if (pathname === '/api/auth/login' && req.method === 'POST') {
+        const body = await req.json();
+        const result = await handleLogin(body);
+        return Response.json(result, { status: result.success ? 200 : 401 });
+      }
+
+      if (pathname === '/api/auth/change-password' && req.method === 'POST') {
+        const body = await req.json();
+        const result = await handleChangePassword(body);
+        return Response.json(result, { status: result.success ? 200 : 400 });
+      }
+
+      if (pathname === '/api/user/me' && req.method === 'GET') {
+        const token = req.headers.get('Authorization')?.replace('Bearer ', '');
+        if (!token) {
+          return Response.json({ success: false, message: 'Unauthorized' }, { status: 401 });
+        }
+        const result = await handleGetCurrentUser(token);
+        return Response.json(result, { status: result.success ? 200 : 401 });
+      }
+
+      return Response.json({ success: false, message: 'API route not found' }, { status: 404 });
+    }
+
+    // In production, serve static files from dist directory
+    if (!isDevelopment) {
+      const file = Bun.file(`dist${pathname}`);
+      if (await file.exists()) {
+        return new Response(file);
+      }
+      // Fallback to index.html for SPA routing
+      const indexFile = Bun.file('dist/index.html');
+      if (await indexFile.exists()) {
+        return new Response(indexFile, {
+          headers: { 'Content-Type': 'text/html' }
+        });
+      }
+      return new Response('Not Found', { status: 404 });
+    }
+
+    // In development, use Vite middleware
+    return new Promise((resolve) => {
+      // Convert Web Request to Node.js request/response
+      const nodeReq: any = {
+        url: pathname + url.search,
+        method: req.method,
+        headers: Object.fromEntries(req.headers.entries()),
+      };
+
+      const nodeRes: any = {
+        statusCode: 200,
+        headers: {},
+        setHeader(name: string, value: string | string[]) {
+          this.headers[name] = value;
+        },
+        getHeader(name: string) {
+          return this.headers[name];
+        },
+        appendHeader(name: string, value: string) {
+          const existing = this.headers[name];
+          if (existing) {
+            this.headers[name] = Array.isArray(existing)
+              ? [...existing, value]
+              : [existing, value];
+          } else {
+            this.headers[name] = value;
+          }
+        },
+        removeHeader(name: string) {
+          delete this.headers[name];
+        },
+        hasHeader(name: string) {
+          return name in this.headers;
+        },
+        end(data: any) {
+          const headers = new Headers();
+          Object.entries(this.headers).forEach(([key, value]) => {
+            if (Array.isArray(value)) {
+              value.forEach(v => headers.append(key, v));
+            } else {
+              headers.set(key, value as string);
+            }
+          });
+          resolve(new Response(data, {
+            status: this.statusCode,
+            headers,
+          }));
+        },
+        write() {},
+      };
+
+      vite.middlewares(nodeReq, nodeRes, () => {
+        // Fallback to index.html for SPA
+        nodeRes.statusCode = 200;
+        nodeRes.setHeader('Content-Type', 'text/html');
+        nodeRes.end('<!DOCTYPE html><html><body><div id="root"></div><script type="module" src="/index.tsx"></script></body></html>');
+      });
+    });
+  },
+});
+
+console.log(`✅ Server running at http://localhost:${PORT}`);
+console.log(`📁 Environment: ${process.env.NODE_ENV || 'development'}`);

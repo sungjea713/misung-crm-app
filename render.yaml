@@ -1,0 +1,17 @@
+services:
+  # Web service for Bun server
+  - type: web
+    name: misung-crm-app
+    runtime: docker
+    plan: free
+    buildCommand: curl -fsSL https://bun.sh/install | bash && export PATH=$HOME/.bun/bin:$PATH && bun install && bun build src/frontend/index.tsx --outdir=dist --target=browser
+    startCommand: bun run src/server/index.ts
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: PORT
+        value: 10000
+      - key: SUPABASE_URL
+        sync: false
+      - key: SUPABASE_ANON_KEY
+        sync: false

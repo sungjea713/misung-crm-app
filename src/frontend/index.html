@@ -1,0 +1,59 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <meta name="description" content="미성 E&C 영업 및 현장 관리 시스템">
+
+  <!-- PWA Meta Tags -->
+  <meta name="theme-color" content="#10b981">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="미성CRM">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="application-name" content="미성CRM">
+  <meta name="msapplication-TileColor" content="#10b981">
+
+  <!-- PWA Manifest -->
+  <link rel="manifest" href="/manifest.json">
+
+  <!-- Icons -->
+  <link rel="icon" type="image/svg+xml" href="/icon.svg">
+  <link rel="apple-touch-icon" href="/icon-192.svg">
+
+  <title>미성 E&C CRM</title>
+
+  <!-- Service Worker Registration -->
+  <script>
+    if ('serviceWorker' in navigator) {
+      window.addEventListener('load', () => {
+        navigator.serviceWorker.register('/service-worker.js')
+          .then(registration => {
+            console.log('Service Worker registered:', registration);
+
+            // Check for updates periodically
+            setInterval(() => {
+              registration.update();
+            }, 60 * 60 * 1000); // Check every hour
+          })
+          .catch(error => {
+            console.error('Service Worker registration failed:', error);
+          });
+      });
+
+      // Handle app updates
+      let refreshing = false;
+      navigator.serviceWorker.addEventListener('controllerchange', () => {
+        if (!refreshing) {
+          refreshing = true;
+          window.location.reload();
+        }
+      });
+    }
+  </script>
+</head>
+<body>
+  <div id="root"></div>
+  <script type="module" src="./index.tsx"></script>
+</body>
+</html>
