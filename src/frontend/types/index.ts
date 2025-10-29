@@ -294,3 +294,26 @@ export interface SiteSummary {
   sales_amount?: string;
   purchase_amount?: string;
 }
+
+// Cost Efficiency Types
+export interface MonthlyCostEfficiency {
+  month: number;
+  overInvestment: number;      // 과투입 (절대값)
+  confirmedRevenue: number;    // 확정 매출
+  difference: number;           // 편차
+}
+
+export interface CostEfficiencySummary {
+  totalOverInvestment: number;
+  totalConfirmedRevenue: number;
+  totalDifference: number;
+}
+
+export interface CostEfficiencyStatsResponse {
+  success: boolean;
+  data?: {
+    monthly: MonthlyCostEfficiency[];
+    summary: CostEfficiencySummary;
+  };
+  message?: string;
+}

@@ -98,16 +98,16 @@ const menuItems: MenuItem[] = [
         path: '/analytics/order-achievement',
       },
       {
-        id: 'collection-status',
-        label: '수금 실적 및 미수금',
-        icon: CreditCard,
-        path: '/analytics/collection-status',
-      },
-      {
         id: 'cost-efficiency',
         label: '원가 투입 효율 관리',
         icon: DollarSign,
         path: '/analytics/cost-efficiency',
+      },
+      {
+        id: 'collection-status',
+        label: '수금 실적 및 미수금',
+        icon: CreditCard,
+        path: '/analytics/collection-status',
       },
     ],
   },

@@ -21,6 +21,7 @@ import {
 import { getActivityStats } from './activity-stats';
 import { getSalesStats } from './sales-stats';
 import { getOrderStats } from './order-stats';
+import { getCostEfficiencyStats } from './cost-efficiency-stats';
 import {
   searchConstructionSites as searchSitesForSales,
   getSalesActivities,
@@ -318,6 +319,26 @@ const server = Bun.serve({
         console.log('GET /api/order-stats - Year:', year, 'User:', userName);
 
         const result = await getOrderStats(year, userName);
+        return Response.json(result, { status: result.success ? 200 : 400 });
+      }
+
+      // Cost Efficiency Stats API Route (원가 투입 효율 관리)
+      if (pathname === '/api/cost-efficiency-stats' && req.method === 'GET') {
+        const token = req.headers.get('Authorization')?.replace('Bearer ', '');
+        if (!token) {
+          return Response.json({ success: false, message: 'Unauthorized' }, { status: 401 });
+        }
+
+        const year = parseInt(url.searchParams.get('year') || new Date().getFullYear().toString());
+        const userName = url.searchParams.get('user_name');
+
+        if (!userName) {
+          return Response.json({ success: false, message: 'user_name parameter is required' }, { status: 400 });
+        }
+
+        console.log('GET /api/cost-efficiency-stats - Year:', year, 'User:', userName);
+
+        const result = await getCostEfficiencyStats(year, userName);
         return Response.json(result, { status: result.success ? 200 : 400 });
       }
 

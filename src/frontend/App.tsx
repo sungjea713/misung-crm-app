@@ -162,7 +162,7 @@ export default function App() {
       case '/analytics/collection-status':
         return <CollectionStatus />;
       case '/analytics/cost-efficiency':
-        return <CostEfficiency />;
+        return <CostEfficiency user={user} />;
       case '/analytics/activity-status':
         return <ActivityStatus user={user} />;
       default:
