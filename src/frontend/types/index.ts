@@ -244,3 +244,53 @@ export interface SalesActivityFilters {
   page?: number;
   limit?: number;
 }
+
+// Invoice Record Types
+export interface InvoiceRecord {
+  id: number;
+  user_id: string;
+  cms_id?: number;
+  cms_code?: string;
+  site_name?: string;
+  site_address?: string;
+  sales_manager?: string;
+  construction_manager?: string;
+  sales_amount?: string;           // 매출금액 (쉼표 포함 문자열)
+  purchase_amount?: string;        // 매입금액 (쉼표 포함 문자열)
+  profit_difference?: number;      // 매출금액 - 매입금액
+  is_over_invested?: boolean;      // 과투입 여부
+  invoice_date: string;            // 계산서 발행일 (YYYY-MM-DD)
+  invoice_amount?: number;         // 계산서 금액
+  created_at: string;
+  updated_at: string;
+  created_by: string;
+  updated_by?: string;
+  users?: {
+    name: string;
+    department: string;
+  };
+}
+
+export interface InvoiceRecordFormData {
+  cms_id?: number;
+  cms_code?: string;
+  site_name?: string;
+  site_address?: string;
+  sales_manager?: string;
+  construction_manager?: string;
+  invoice_date: string;
+  invoice_amount?: number;
+}
+
+export interface InvoiceRecordFilters {
+  user_id?: string;
+  year: number;
+  month: number;
+  page?: number;
+  limit?: number;
+}
+
+export interface SiteSummary {
+  sales_amount?: string;
+  purchase_amount?: string;
+}

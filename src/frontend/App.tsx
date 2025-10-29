@@ -152,7 +152,7 @@ export default function App() {
       case '/performance/sales-activity':
         return <SalesActivity user={user} />;
       case '/performance/invoice':
-        return <Invoice />;
+        return <Invoice user={user} />;
       case '/performance/collection':
         return <Collection />;
       case '/analytics/monthly-sales':

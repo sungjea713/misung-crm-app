@@ -30,6 +30,15 @@ import {
   deleteSalesActivity,
   getAllUsers as getAllUsersForSales,
 } from './sales-activities';
+import {
+  searchConstructionSites as searchSitesForInvoice,
+  getInvoiceRecords,
+  getInvoiceRecord,
+  createInvoiceRecord,
+  updateInvoiceRecord,
+  deleteInvoiceRecord,
+  getSiteSummary,
+} from './invoice-records';
 
 const PORT = process.env.PORT || 3001;
 const isDevelopment = process.env.NODE_ENV !== 'production';
@@ -460,6 +469,141 @@ const server = Bun.serve({
         const user = result.user;
         const id = parseInt(pathname.split('/').pop()!);
         const deleteResult = await deleteSalesActivity(id, user.role, user.id);
+        return Response.json(deleteResult, { status: deleteResult.success ? 200 : 400 });
+      }
+
+      // ========== Invoice Records API ==========
+
+      // Search construction sites for invoice records
+      if (pathname === '/api/invoice-records/construction-sites/search' && req.method === 'GET') {
+        const query = url.searchParams.get('q');
+        if (!query || query.length < 2) {
+          return Response.json({ success: false, message: 'Query must be at least 2 characters' }, { status: 400 });
+        }
+
+        const result = await searchSitesForInvoice(query);
+        return Response.json(result, { status: result.success ? 200 : 400 });
+      }
+
+      // Get site summary (매출/매입 금액)
+      if (pathname === '/api/invoice-records/site-summary' && req.method === 'GET') {
+        const cms = url.searchParams.get('cms');
+        if (!cms) {
+          return Response.json({ success: false, message: 'CMS code is required' }, { status: 400 });
+        }
+
+        const result = await getSiteSummary(cms);
+        return Response.json(result, { status: result.success ? 200 : 400 });
+      }
+
+      // Get invoice records list
+      if (pathname === '/api/invoice-records' && req.method === 'GET') {
+        const token = req.headers.get('Authorization')?.replace('Bearer ', '');
+        if (!token) {
+          return Response.json({ success: false, message: 'Unauthorized' }, { status: 401 });
+        }
+
+        const result = await handleGetCurrentUser(token);
+        if (!result.success || !result.user) {
+          return Response.json({ success: false, message: 'Unauthorized' }, { status: 401 });
+        }
+
+        const user = result.user;
+
+        const year = parseInt(url.searchParams.get('year') || new Date().getFullYear().toString());
+        const month = parseInt(url.searchParams.get('month') || (new Date().getMonth() + 1).toString());
+        const page = parseInt(url.searchParams.get('page') || '1');
+        const limit = parseInt(url.searchParams.get('limit') || '20');
+        const userIdFilter = url.searchParams.get('user_id');
+
+        // 관리자가 아닌 경우 본인 데이터만 조회
+        const filters = {
+          user_id: user.role === 'admin' && userIdFilter ? userIdFilter : user.id,
+          year,
+          month,
+          page,
+          limit,
+        };
+
+        const invoiceResult = await getInvoiceRecords(filters);
+        return Response.json(invoiceResult, { status: invoiceResult.success ? 200 : 400 });
+      }
+
+      // Create invoice record
+      if (pathname === '/api/invoice-records' && req.method === 'POST') {
+        const token = req.headers.get('Authorization')?.replace('Bearer ', '');
+        if (!token) {
+          return Response.json({ success: false, message: 'Unauthorized' }, { status: 401 });
+        }
+
+        const result = await handleGetCurrentUser(token);
+        if (!result.success || !result.user) {
+          return Response.json({ success: false, message: 'Unauthorized' }, { status: 401 });
+        }
+
+        const user = result.user;
+        const invoiceData = await req.json();
+
+        console.log('POST /api/invoice-records - User:', user.name, 'Data:', invoiceData);
+
+        const createResult = await createInvoiceRecord(invoiceData, user.id, user.name);
+        return Response.json(createResult, { status: createResult.success ? 200 : 400 });
+      }
+
+      // Get invoice record by ID
+      if (pathname.match(/^\/api\/invoice-records\/\d+$/) && req.method === 'GET') {
+        const token = req.headers.get('Authorization')?.replace('Bearer ', '');
+        if (!token) {
+          return Response.json({ success: false, message: 'Unauthorized' }, { status: 401 });
+        }
+
+        const result = await handleGetCurrentUser(token);
+        if (!result.success || !result.user) {
+          return Response.json({ success: false, message: 'Unauthorized' }, { status: 401 });
+        }
+
+        const id = parseInt(pathname.split('/').pop()!);
+        const invoiceResult = await getInvoiceRecord(id);
+        return Response.json(invoiceResult, { status: invoiceResult.success ? 200 : 400 });
+      }
+
+      // Update invoice record
+      if (pathname.match(/^\/api\/invoice-records\/\d+$/) && req.method === 'PUT') {
+        const token = req.headers.get('Authorization')?.replace('Bearer ', '');
+        if (!token) {
+          return Response.json({ success: false, message: 'Unauthorized' }, { status: 401 });
+        }
+
+        const result = await handleGetCurrentUser(token);
+        if (!result.success || !result.user) {
+          return Response.json({ success: false, message: 'Unauthorized' }, { status: 401 });
+        }
+
+        const user = result.user;
+        const id = parseInt(pathname.split('/').pop()!);
+        const invoiceData = await req.json();
+
+        console.log('PUT /api/invoice-records/' + id, '- User:', user.name, 'Data:', invoiceData);
+
+        const updateResult = await updateInvoiceRecord(id, invoiceData, user.id, user.name, user.role);
+        return Response.json(updateResult, { status: updateResult.success ? 200 : 400 });
+      }
+
+      // Delete invoice record
+      if (pathname.match(/^\/api\/invoice-records\/\d+$/) && req.method === 'DELETE') {
+        const token = req.headers.get('Authorization')?.replace('Bearer ', '');
+        if (!token) {
+          return Response.json({ success: false, message: 'Unauthorized' }, { status: 401 });
+        }
+
+        const result = await handleGetCurrentUser(token);
+        if (!result.success || !result.user) {
+          return Response.json({ success: false, message: 'Unauthorized' }, { status: 401 });
+        }
+
+        const user = result.user;
+        const id = parseInt(pathname.split('/').pop()!);
+        const deleteResult = await deleteInvoiceRecord(id, user.id, user.role);
         return Response.json(deleteResult, { status: deleteResult.success ? 200 : 400 });
       }
 

@@ -217,3 +217,53 @@ curl 'https://dmyhhbvhbpwwtrmequop.supabase.co/rest/v1/construction_management?c
 데이터 freshness
 모든 테이블은 약 8분마다 전체 데이터가 갱신됨
 synced_at 컬럼으로 마지막 동기화 시각 확인 가능
+
+## 5. invoice_records (계산서 발행)
+
+### 테이블 설명
+계산서 발행 기록을 저장하는 사용자 생성 데이터 테이블
+
+### 컬럼 명세
+
+| 컬럼명 | 데이터 타입 | Null 허용 | 설명 |
+|--------|------------|-----------|------|
+| id | BIGSERIAL | NO | 기본 키 (자동 증가) |
+| user_id | UUID | NO | 작성자 ID (users 테이블 참조, CASCADE 삭제) |
+| cms_id | BIGINT | YES | 현장 ID (construction_management 테이블 참조, SET NULL 삭제) |
+| cms_code | TEXT | YES | CMS 코드 (스냅샷) |
+| site_name | TEXT | YES | 현장명 (스냅샷) |
+| site_address | TEXT | YES | 현장 주소 (스냅샷) |
+| sales_manager | TEXT | YES | 영업 담당자 (스냅샷) |
+| construction_manager | TEXT | YES | 시공 담당자 (스냅샷) |
+| sales_amount | TEXT | YES | 매출금액 (site_summary 스냅샷, 쉼표 포함 문자열) |
+| purchase_amount | TEXT | YES | 매입금액 (site_summary 스냅샷, 쉼표 포함 문자열) |
+| profit_difference | DECIMAL(15,2) | YES | 매출금액 - 매입금액 차액 |
+| is_over_invested | BOOLEAN | YES | 과투입 여부 (차액이 음수면 true) |
+| invoice_date | DATE | NO | 계산서 발행일 |
+| invoice_amount | DECIMAL(15,2) | YES | 계산서 금액 |
+| created_at | TIMESTAMPTZ | NO | 생성 날짜 (기본값: NOW()) |
+| updated_at | TIMESTAMPTZ | NO | 수정 날짜 (기본값: NOW(), 트리거로 자동 업데이트) |
+| created_by | TEXT | NO | 작성자명 |
+| updated_by | TEXT | YES | 수정자명 |
+
+### 인덱스
+- `idx_invoice_records_user_id` - user_id 컬럼
+- `idx_invoice_records_invoice_date` - invoice_date 컬럼
+- `idx_invoice_records_cms_id` - cms_id 컬럼
+- `idx_invoice_records_created_at` - created_at 컬럼
+
+### 트리거
+- `trigger_invoice_records_updated_at` - updated_at 자동 업데이트 (UPDATE 시)
+
+### 데이터 특성
+- **스냅샷 방식**: construction_management와 site_summary의 데이터를 등록 시점에 복사하여 저장
+- **자동 계산**: profit_difference와 is_over_invested는 백엔드에서 계산 후 저장
+- **사용자 데이터**: 관리자는 모든 데이터 조회 가능, 일반 사용자는 본인 데이터만 조회 가능
+
+### 비즈니스 로직
+1. 현장 선택 시 construction_management에서 현장 정보 로드
+2. 선택한 cms 코드로 site_summary 조회하여 sales_amount, purchase_amount 가져오기
+3. profit_difference = sales_amount - purchase_amount (문자열 → 숫자 변환 후 계산)
+4. is_over_invested = profit_difference < 0
+5. 사용자가 invoice_date와 invoice_amount 입력
+6. 모든 데이터를 invoice_records 테이블에 저장
