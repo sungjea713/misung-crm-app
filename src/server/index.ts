@@ -189,13 +189,33 @@ const server = Bun.serve({
     if (!isDevelopment) {
       const file = Bun.file(`dist${pathname}`);
       if (await file.exists()) {
-        return new Response(file);
+        // 정적 파일 제공 시 캐시 헤더 설정
+        const headers = new Headers();
+
+        // HTML 파일은 캐시 안 함
+        if (pathname.endsWith('.html')) {
+          headers.set('Content-Type', 'text/html');
+          headers.set('Cache-Control', 'no-cache, no-store, must-revalidate');
+          headers.set('Pragma', 'no-cache');
+          headers.set('Expires', '0');
+        }
+        // CSS/JS 파일은 1년 캐시 (파일명에 해시가 있으므로)
+        else if (pathname.endsWith('.js') || pathname.endsWith('.css')) {
+          headers.set('Cache-Control', 'public, max-age=31536000, immutable');
+        }
+
+        return new Response(file, { headers });
       }
       // Fallback to index.html for SPA routing
       const indexFile = Bun.file('dist/index.html');
       if (await indexFile.exists()) {
         return new Response(indexFile, {
-          headers: { 'Content-Type': 'text/html' }
+          headers: {
+            'Content-Type': 'text/html',
+            'Cache-Control': 'no-cache, no-store, must-revalidate',
+            'Pragma': 'no-cache',
+            'Expires': '0',
+          }
         });
       }
       return new Response('Not Found', { status: 404 });
@@ -245,6 +265,14 @@ const server = Bun.serve({
         },
         end(data: any) {
           const headers = new Headers();
+
+          // 개발 환경에서 캐시 무효화 헤더 강제 추가
+          if (isDevelopment) {
+            headers.set('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate');
+            headers.set('Pragma', 'no-cache');
+            headers.set('Expires', '0');
+          }
+
           Object.entries(this.headers).forEach(([key, value]) => {
             if (Array.isArray(value)) {
               value.forEach(v => headers.append(key, v));
