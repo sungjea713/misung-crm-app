@@ -54,7 +54,7 @@ export async function getOrderStats(year: number, userName: string): Promise<Ord
     const { data: siteSummary, error: siteError } = await supabase
       .from('site_summary')
       .select('cms, expected_execution_rate')
-      .ilike('construction_manager', `${userName}%`);
+      .ilike('sales_manager', `${userName}%`);
 
     if (siteError) {
       console.error('Error fetching site_summary:', siteError);
