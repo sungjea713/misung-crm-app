@@ -338,6 +338,9 @@ export function InvoiceRecordForm({ user, record, onClose, onSave, onDelete }: I
             placeholder="0"
             required
           />
+          <p className="mt-2 text-sm font-medium text-amber-400">
+            (계산서 공급가액을 입력하세요)
+          </p>
         </div>
 
         {/* Error Message */}

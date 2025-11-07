@@ -220,6 +220,8 @@ export interface SalesActivity {
   site_name?: string;
   site_address?: string;
   client?: string;
+  new_client?: string;        // 신규 현장 고객사
+  new_site_name?: string;     // 신규 현장명
   amount?: number;
   execution_rate?: number;
   attachments: string[];
@@ -242,6 +244,8 @@ export interface SalesActivityFormData {
   site_name?: string;
   site_address?: string;
   client?: string;
+  new_client?: string;        // 신규 현장 고객사
+  new_site_name?: string;     // 신규 현장명
   amount?: number;
   execution_rate?: number;
   attachments?: string[];

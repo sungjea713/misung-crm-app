@@ -244,6 +244,18 @@ export function SalesActivityForm({ user, activity, onClose, onSave, onDelete }:
       return;
     }
 
+    // If site_type is new, require new_client and new_site_name
+    if (formData.site_type === 'new') {
+      if (!formData.new_client || formData.new_client.trim() === '') {
+        setError('고객사(거래처)를 입력해주세요.');
+        return;
+      }
+      if (!formData.new_site_name || formData.new_site_name.trim() === '') {
+        setError('현장명을 입력해주세요.');
+        return;
+      }
+    }
+
     setLoading(true);
 
     try {
@@ -400,12 +412,15 @@ export function SalesActivityForm({ user, activity, onClose, onSave, onDelete }:
                   onChange={(e) => setFormData({
                     ...formData,
                     site_type: 'new',
-                    // Clear site info when switching to new
+                    // Clear existing site info when switching to new
                     cms_id: undefined,
                     cms_code: '',
                     site_name: '',
                     site_address: '',
                     client: '',
+                    // Initialize new site fields
+                    new_client: '',
+                    new_site_name: '',
                   })}
                   className="w-4 h-4 text-primary"
                 />
@@ -457,6 +472,42 @@ export function SalesActivityForm({ user, activity, onClose, onSave, onDelete }:
                 </div>
               )}
             </div>
+          )}
+
+          {/* New Site Client and Site Name (only for new sites) */}
+          {formData.site_type === 'new' && (
+            <>
+              <div>
+                <label className="block text-sm font-medium text-gray-text mb-2">
+                  고객사(거래처) <span className="text-red-400">*</span>
+                </label>
+                <input
+                  type="text"
+                  value={formData.new_client || ''}
+                  onChange={(e) => setFormData({ ...formData, new_client: e.target.value })}
+                  disabled={loading}
+                  className="input-field"
+                  placeholder="고객사명을 입력하세요"
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-text mb-2">
+                  현장명 <span className="text-red-400">*</span>
+                </label>
+                <input
+                  type="text"
+                  value={formData.new_site_name || ''}
+                  onChange={(e) => setFormData({ ...formData, new_site_name: e.target.value })}
+                  disabled={loading}
+                  className="input-field"
+                  placeholder="고객사/원도급/현장명"
+                />
+                <p className="mt-1 text-sm text-amber-400">
+                  ▶현장명은 고객사/원도급/현장명 순서로 기재 바랍니다
+                </p>
+              </div>
+            </>
           )}
 
           {/* Amount */}
