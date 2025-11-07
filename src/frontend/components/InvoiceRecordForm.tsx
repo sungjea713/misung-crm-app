@@ -143,6 +143,19 @@ export function InvoiceRecordForm({ user, record, onClose, onSave, onDelete }: I
     return num.toLocaleString('ko-KR');
   };
 
+  // 계산서 금액 입력 처리 (천 단위 콤마 표시)
+  const handleInvoiceAmountChange = (value: string) => {
+    const numericValue = value.replace(/[^\d]/g, '');
+    const numberValue = numericValue === '' ? undefined : parseFloat(numericValue);
+    setFormData({ ...formData, invoice_amount: numberValue });
+  };
+
+  // 계산서 금액 포맷 (빈 값은 빈 문자열로 표시)
+  const formatInvoiceAmount = (value: number | undefined): string => {
+    if (!value) return '';
+    return value.toLocaleString('ko-KR');
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError('');
@@ -317,18 +330,12 @@ export function InvoiceRecordForm({ user, record, onClose, onSave, onDelete }: I
             계산서 금액 (원) <span className="text-red-500">*</span>
           </label>
           <input
-            type="number"
-            value={formData.invoice_amount || ''}
-            onChange={(e) =>
-              setFormData({
-                ...formData,
-                invoice_amount: e.target.value ? parseFloat(e.target.value) : undefined,
-              })
-            }
-            className="input-field"
-            placeholder="계산서 금액을 입력하세요"
-            step="1000"
-            min="0"
+            type="text"
+            value={formatInvoiceAmount(formData.invoice_amount)}
+            onChange={(e) => handleInvoiceAmountChange(e.target.value)}
+            disabled={loading}
+            className="input-field text-right"
+            placeholder="0"
             required
           />
         </div>

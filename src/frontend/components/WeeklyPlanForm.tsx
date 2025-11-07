@@ -27,6 +27,11 @@ export function WeeklyPlanForm({ user, plan, onClose, onSave, onDelete }: Weekly
     activity_construction_sales: plan?.activity_construction_sales || false,
     activity_site_additional_sales: plan?.activity_site_additional_sales || false,
     activity_site_support: plan?.activity_site_support || false,
+    target_sales: plan?.target_sales || 0,
+    target_order_sales_contribution: plan?.target_order_sales_contribution || 0,
+    target_order_profit_contribution: plan?.target_order_profit_contribution || 0,
+    target_order_total: plan?.target_order_total || 0,
+    target_collection: plan?.target_collection || 0,
   });
 
   // Update formData when plan prop changes (for edit mode)
@@ -42,6 +47,11 @@ export function WeeklyPlanForm({ user, plan, onClose, onSave, onDelete }: Weekly
         activity_construction_sales: plan.activity_construction_sales || false,
         activity_site_additional_sales: plan.activity_site_additional_sales || false,
         activity_site_support: plan.activity_site_support || false,
+        target_sales: plan.target_sales || 0,
+        target_order_sales_contribution: plan.target_order_sales_contribution || 0,
+        target_order_profit_contribution: plan.target_order_profit_contribution || 0,
+        target_order_total: plan.target_order_total || 0,
+        target_collection: plan.target_collection || 0,
       });
     } else {
       // Reset form for new entry
@@ -55,6 +65,11 @@ export function WeeklyPlanForm({ user, plan, onClose, onSave, onDelete }: Weekly
         activity_construction_sales: false,
         activity_site_additional_sales: false,
         activity_site_support: false,
+        target_sales: 0,
+        target_order_sales_contribution: 0,
+        target_order_profit_contribution: 0,
+        target_order_total: 0,
+        target_collection: 0,
       });
     }
   }, [plan]);
@@ -77,6 +92,38 @@ export function WeeklyPlanForm({ user, plan, onClose, onSave, onDelete }: Weekly
       ...formData,
       [field]: !formData[field],
     });
+  };
+
+  // 목표 금액 입력 처리 (천 단위 콤마 표시)
+  const handleTargetAmountChange = (field: keyof WeeklyPlanFormData, value: string) => {
+    // 숫자만 추출
+    const numericValue = value.replace(/[^\d]/g, '');
+    const numberValue = numericValue === '' ? 0 : parseInt(numericValue, 10);
+
+    const updatedData = {
+      ...formData,
+      [field]: numberValue,
+    };
+
+    // 목표 수주 합계 자동 계산
+    if (field === 'target_order_sales_contribution' || field === 'target_order_profit_contribution') {
+      const salesContribution = field === 'target_order_sales_contribution'
+        ? numberValue
+        : (updatedData.target_order_sales_contribution || 0);
+      const profitContribution = field === 'target_order_profit_contribution'
+        ? numberValue
+        : (updatedData.target_order_profit_contribution || 0);
+
+      updatedData.target_order_total = salesContribution + profitContribution;
+    }
+
+    setFormData(updatedData);
+  };
+
+  // 천 단위 콤마 포맷
+  const formatNumber = (value: number | undefined): string => {
+    if (!value) return '0';
+    return value.toLocaleString('ko-KR');
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -371,6 +418,96 @@ export function WeeklyPlanForm({ user, plan, onClose, onSave, onDelete }: Weekly
                 </span>
               </div>
             </label>
+          </div>
+        </div>
+
+        {/* 목표 금액 설정 */}
+        <div className="card space-y-4">
+          <h3 className="text-lg font-semibold text-white border-b border-gray-border pb-3">
+            목표 금액 설정
+          </h3>
+          <div className="overflow-x-auto">
+            <table className="w-full">
+              <thead>
+                <tr className="border-b border-gray-border">
+                  <th className="px-4 py-3 text-left text-sm font-semibold text-gray-text">항목</th>
+                  <th className="px-4 py-3 text-right text-sm font-semibold text-gray-text">금액 (원)</th>
+                </tr>
+              </thead>
+              <tbody>
+                {/* 목표 매출 */}
+                <tr className="border-b border-gray-border hover:bg-bg-darker transition-colors">
+                  <td className="px-4 py-3 text-sm text-white">목표 매출</td>
+                  <td className="px-4 py-3 text-right">
+                    <input
+                      type="text"
+                      value={formatNumber(formData.target_sales)}
+                      onChange={(e) => handleTargetAmountChange('target_sales', e.target.value)}
+                      disabled={loading}
+                      className="input-field text-right w-full"
+                      placeholder="0"
+                    />
+                  </td>
+                </tr>
+
+                {/* 목표 수주 - 매출 기여 */}
+                <tr className="border-b border-gray-border hover:bg-bg-darker transition-colors">
+                  <td className="px-4 py-3 text-sm text-white">목표 수주 - 매출 기여</td>
+                  <td className="px-4 py-3 text-right">
+                    <input
+                      type="text"
+                      value={formatNumber(formData.target_order_sales_contribution)}
+                      onChange={(e) => handleTargetAmountChange('target_order_sales_contribution', e.target.value)}
+                      disabled={loading}
+                      className="input-field text-right w-full"
+                      placeholder="0"
+                    />
+                  </td>
+                </tr>
+
+                {/* 목표 수주 - 이익 기여 */}
+                <tr className="border-b border-gray-border hover:bg-bg-darker transition-colors">
+                  <td className="px-4 py-3 text-sm text-white">목표 수주 - 이익 기여</td>
+                  <td className="px-4 py-3 text-right">
+                    <input
+                      type="text"
+                      value={formatNumber(formData.target_order_profit_contribution)}
+                      onChange={(e) => handleTargetAmountChange('target_order_profit_contribution', e.target.value)}
+                      disabled={loading}
+                      className="input-field text-right w-full"
+                      placeholder="0"
+                    />
+                  </td>
+                </tr>
+
+                {/* 목표 수주 - 합계 (자동 계산) */}
+                <tr className="border-b-2 border-gray-border bg-bg-darker opacity-60">
+                  <td className="px-4 py-3 text-sm font-semibold text-gray-text">
+                    목표 수주 - 합계 <span className="text-xs font-normal">(자동계산)</span>
+                  </td>
+                  <td className="px-4 py-3 text-right">
+                    <div className="px-3 py-2 bg-bg-card bg-opacity-50 text-gray-text font-semibold text-right rounded">
+                      {formatNumber(formData.target_order_total)}
+                    </div>
+                  </td>
+                </tr>
+
+                {/* 목표 수금 */}
+                <tr className="hover:bg-bg-darker transition-colors">
+                  <td className="px-4 py-3 text-sm text-white">목표 수금</td>
+                  <td className="px-4 py-3 text-right">
+                    <input
+                      type="text"
+                      value={formatNumber(formData.target_collection)}
+                      onChange={(e) => handleTargetAmountChange('target_collection', e.target.value)}
+                      disabled={loading}
+                      className="input-field text-right w-full"
+                      placeholder="0"
+                    />
+                  </td>
+                </tr>
+              </tbody>
+            </table>
           </div>
         </div>
 

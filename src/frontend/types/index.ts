@@ -77,6 +77,11 @@ export interface WeeklyPlan {
   activity_construction_sales: boolean;
   activity_site_additional_sales: boolean;
   activity_site_support: boolean;
+  target_sales?: number;
+  target_order_sales_contribution?: number;
+  target_order_profit_contribution?: number;
+  target_order_total?: number;
+  target_collection?: number;
   created_at: string;
   updated_at: string;
   created_by: string;
@@ -93,6 +98,11 @@ export interface WeeklyPlanFormData {
   activity_construction_sales: boolean;
   activity_site_additional_sales: boolean;
   activity_site_support: boolean;
+  target_sales?: number;
+  target_order_sales_contribution?: number;
+  target_order_profit_contribution?: number;
+  target_order_total?: number;
+  target_collection?: number;
 }
 
 export interface WeeklyPlanFilters {
@@ -179,12 +189,14 @@ export interface MonthlySalesStats {
   revenue: number;      // 확정 매출 (원 단위)
   cost: number;         // 확정 매입 (원 단위)
   profit: number;       // 매출 이익 (원 단위)
+  targetSales: number;  // 목표 매출 (원 단위)
 }
 
 export interface SalesSummary {
   revenue: number;
   cost: number;
   profit: number;
+  targetSales: number;
 }
 
 export interface SalesStatsResponse {
@@ -314,6 +326,59 @@ export interface CostEfficiencyStatsResponse {
   data?: {
     monthly: MonthlyCostEfficiency[];
     summary: CostEfficiencySummary;
+  };
+  message?: string;
+}
+
+// Order Stats Types
+export interface MonthlyOrderStats {
+  month: number;
+  salesContribution: {
+    order: number;
+    execution: number;
+    profit: number;
+  };
+  profitContribution: {
+    order: number;
+    execution: number;
+    profit: number;
+  };
+  total: {
+    order: number;
+    execution: number;
+    profit: number;
+  };
+  targetSalesContribution: number;
+  targetProfitContribution: number;
+  targetTotal: number;
+}
+
+export interface OrderSummary {
+  salesContribution: {
+    order: number;
+    execution: number;
+    profit: number;
+  };
+  profitContribution: {
+    order: number;
+    execution: number;
+    profit: number;
+  };
+  total: {
+    order: number;
+    execution: number;
+    profit: number;
+  };
+  targetSalesContribution: number;
+  targetProfitContribution: number;
+  targetTotal: number;
+}
+
+export interface OrderStatsResponse {
+  success: boolean;
+  data?: {
+    monthly: MonthlyOrderStats[];
+    summary: OrderSummary;
   };
   message?: string;
 }

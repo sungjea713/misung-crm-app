@@ -9,6 +9,7 @@ interface MonthlySales {
   revenue: number;
   cost: number;
   profit: number;
+  targetSales: number;
 }
 
 interface SalesStatsResponse {
@@ -19,6 +20,7 @@ interface SalesStatsResponse {
       revenue: number;
       cost: number;
       profit: number;
+      targetSales: number;
     };
   };
   message?: string;
@@ -54,10 +56,24 @@ export async function getSalesStats(year: number, userName: string): Promise<Sal
       return { success: false, message: '매입 데이터를 불러오지 못했습니다.' };
     }
 
+    // 목표 매출 데이터 집계 (weekly_plans 테이블)
+    // created_by로 사용자 매칭 (작성자 기준)
+    const { data: weeklyPlansData, error: weeklyPlansError } = await supabase
+      .from('weekly_plans')
+      .select('created_at, target_sales')
+      .eq('created_by', userName)
+      .gte('created_at', `${year}-01-01`)
+      .lt('created_at', `${year + 1}-01-01`);
+
+    if (weeklyPlansError) {
+      console.error('Error fetching weekly_plans:', weeklyPlansError);
+      // 목표 매출 조회 실패 시 경고만 출력하고 계속 진행
+    }
+
     // 월별 집계 맵 초기화 (1-12월)
-    const monthlyMap = new Map<number, { revenue: number; cost: number }>();
+    const monthlyMap = new Map<number, { revenue: number; cost: number; targetSales: number }>();
     for (let month = 1; month <= 12; month++) {
-      monthlyMap.set(month, { revenue: 0, cost: 0 });
+      monthlyMap.set(month, { revenue: 0, cost: 0, targetSales: 0 });
     }
 
     // 매출 데이터 집계
@@ -92,6 +108,22 @@ export async function getSalesStats(year: number, userName: string): Promise<Sal
       }
     });
 
+    // 목표 매출 데이터 집계
+    weeklyPlansData?.forEach((row: any) => {
+      if (row.created_at && row.target_sales) {
+        try {
+          const date = new Date(row.created_at);
+          const month = date.getMonth() + 1; // 1-12
+          if (month >= 1 && month <= 12) {
+            const current = monthlyMap.get(month)!;
+            current.targetSales += row.target_sales || 0;
+          }
+        } catch (error) {
+          console.error('Invalid created_at:', row.created_at);
+        }
+      }
+    });
+
     // 월별 데이터 배열로 변환 및 이익 계산
     const monthly: MonthlySales[] = Array.from(monthlyMap.entries())
       .map(([month, data]) => ({
@@ -99,6 +131,7 @@ export async function getSalesStats(year: number, userName: string): Promise<Sal
         revenue: data.revenue,
         cost: data.cost,
         profit: data.revenue - data.cost,
+        targetSales: data.targetSales,
       }))
       .sort((a, b) => a.month - b.month);
 
@@ -107,12 +140,14 @@ export async function getSalesStats(year: number, userName: string): Promise<Sal
       revenue: 0,
       cost: 0,
       profit: 0,
+      targetSales: 0,
     };
 
     monthly.forEach((m) => {
       summary.revenue += m.revenue;
       summary.cost += m.cost;
       summary.profit += m.profit;
+      summary.targetSales += m.targetSales;
     });
 
     return {

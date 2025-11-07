@@ -84,10 +84,9 @@ export default function MonthlySales({ user }: MonthlySalesProps) {
   // 년도 옵션 (현재 년도부터 5년 전까지)
   const yearOptions = Array.from({ length: 6 }, (_, i) => new Date().getFullYear() - i);
 
-  // 천원 단위로 변환 및 포맷팅
+  // 원 단위 포맷팅 (천 단위 콤마 표시)
   const formatAmount = (amount: number): string => {
-    const inThousands = Math.round(amount / 1000);
-    return inThousands.toLocaleString();
+    return Math.round(amount).toLocaleString('ko-KR');
   };
 
   // 커스텀 툴팁 컴포넌트
@@ -95,10 +94,10 @@ export default function MonthlySales({ user }: MonthlySalesProps) {
     if (active && payload && payload.length) {
       return (
         <div className="bg-bg-lighter border border-gray-border rounded-lg p-4 shadow-xl">
-          <p className="text-white font-semibold mb-2">{label}월</p>
+          <p className="text-white font-semibold mb-2">{label}</p>
           {payload.map((entry: any, index: number) => (
             <p key={`item-${index}`} className="text-sm" style={{ color: entry.color }}>
-              {entry.name}: {formatAmount(entry.value)}천원
+              {entry.name}: {(entry.value * 1000).toLocaleString('ko-KR')}원
             </p>
           ))}
         </div>
@@ -110,6 +109,7 @@ export default function MonthlySales({ user }: MonthlySalesProps) {
   // 차트 데이터 준비 (천원 단위로 변환)
   const chartData = monthlyData.map((month) => ({
     month: `${month.month}월`,
+    목표매출: Math.round(month.targetSales / 1000),
     확정매출: Math.round(month.revenue / 1000),
     확정매입: Math.round(month.cost / 1000),
     매출이익: Math.round(month.profit / 1000),
@@ -207,7 +207,20 @@ export default function MonthlySales({ user }: MonthlySalesProps) {
         <>
           {/* 요약 카드 */}
           {summary && (
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
+              {/* 목표 매출 */}
+              <div className="card bg-gradient-to-br from-blue-500/10 to-bg-lighter border border-blue-500/20">
+                <div className="flex items-center gap-3 mb-4">
+                  <div className="w-10 h-10 rounded-lg bg-blue-500/20 flex items-center justify-center">
+                    <DollarSign size={20} className="text-blue-400" />
+                  </div>
+                  <h3 className="text-lg font-semibold text-white">목표 매출</h3>
+                </div>
+                <div className="text-2xl font-bold text-blue-400">
+                  {formatAmount(summary.targetSales)} <span className="text-sm text-gray-text">원</span>
+                </div>
+              </div>
+
               {/* 확정 매출 */}
               <div className="card bg-gradient-to-br from-green-500/10 to-bg-lighter border border-green-500/20">
                 <div className="flex items-center gap-3 mb-4">
@@ -217,7 +230,7 @@ export default function MonthlySales({ user }: MonthlySalesProps) {
                   <h3 className="text-lg font-semibold text-white">확정 매출</h3>
                 </div>
                 <div className="text-2xl font-bold text-white">
-                  {formatAmount(summary.revenue)} <span className="text-sm text-gray-text">천원</span>
+                  {formatAmount(summary.revenue)} <span className="text-sm text-gray-text">원</span>
                 </div>
               </div>
 
@@ -230,20 +243,20 @@ export default function MonthlySales({ user }: MonthlySalesProps) {
                   <h3 className="text-lg font-semibold text-white">확정 매입</h3>
                 </div>
                 <div className="text-2xl font-bold text-white">
-                  {formatAmount(summary.cost)} <span className="text-sm text-gray-text">천원</span>
+                  {formatAmount(summary.cost)} <span className="text-sm text-gray-text">원</span>
                 </div>
               </div>
 
               {/* 매출 이익 */}
-              <div className="card bg-gradient-to-br from-blue-500/10 to-bg-lighter border border-blue-500/20">
+              <div className="card bg-gradient-to-br from-purple-500/10 to-bg-lighter border border-purple-500/20">
                 <div className="flex items-center gap-3 mb-4">
-                  <div className="w-10 h-10 rounded-lg bg-blue-500/20 flex items-center justify-center">
-                    <TrendingUp size={20} className="text-blue-400" />
+                  <div className="w-10 h-10 rounded-lg bg-purple-500/20 flex items-center justify-center">
+                    <TrendingUp size={20} className="text-purple-400" />
                   </div>
                   <h3 className="text-lg font-semibold text-white">매출 이익</h3>
                 </div>
                 <div className={`text-2xl font-bold ${summary.profit >= 0 ? 'text-white' : 'text-red-400'}`}>
-                  {formatAmount(summary.profit)} <span className="text-sm text-gray-text">천원</span>
+                  {formatAmount(summary.profit)} <span className="text-sm text-gray-text">원</span>
                 </div>
               </div>
             </div>
@@ -259,6 +272,10 @@ export default function MonthlySales({ user }: MonthlySalesProps) {
                   margin={{ top: 20, right: 30, left: 20, bottom: 20 }}
                 >
                   <defs>
+                    <linearGradient id="colorTarget" x1="0" y1="0" x2="0" y2="1">
+                      <stop offset="5%" stopColor="#60a5fa" stopOpacity={0.8} />
+                      <stop offset="95%" stopColor="#60a5fa" stopOpacity={0.3} />
+                    </linearGradient>
                     <linearGradient id="colorRevenue" x1="0" y1="0" x2="0" y2="1">
                       <stop offset="5%" stopColor="#4ade80" stopOpacity={0.8} />
                       <stop offset="95%" stopColor="#4ade80" stopOpacity={0.3} />
@@ -295,6 +312,12 @@ export default function MonthlySales({ user }: MonthlySalesProps) {
                     iconType="circle"
                   />
                   <Bar
+                    dataKey="목표매출"
+                    fill="url(#colorTarget)"
+                    radius={[8, 8, 0, 0]}
+                    animationDuration={800}
+                  />
+                  <Bar
                     dataKey="확정매출"
                     fill="url(#colorRevenue)"
                     radius={[8, 8, 0, 0]}
@@ -309,10 +332,10 @@ export default function MonthlySales({ user }: MonthlySalesProps) {
                   <Line
                     type="monotone"
                     dataKey="매출이익"
-                    stroke="#60a5fa"
+                    stroke="#a78bfa"
                     strokeWidth={3}
-                    dot={{ fill: '#60a5fa', r: 5 }}
-                    activeDot={{ r: 7, stroke: '#60a5fa', strokeWidth: 2 }}
+                    dot={{ fill: '#a78bfa', r: 5 }}
+                    activeDot={{ r: 7, stroke: '#a78bfa', strokeWidth: 2 }}
                     animationDuration={1000}
                   />
                 </ComposedChart>
@@ -328,6 +351,7 @@ export default function MonthlySales({ user }: MonthlySalesProps) {
                 <thead>
                   <tr className="border-b border-gray-border">
                     <th className="text-left py-3 px-4 text-gray-text font-medium">월</th>
+                    <th className="text-right py-3 px-4 text-gray-text font-medium">목표 매출</th>
                     <th className="text-right py-3 px-4 text-gray-text font-medium">확정 매출</th>
                     <th className="text-right py-3 px-4 text-gray-text font-medium">확정 매입</th>
                     <th className="text-right py-3 px-4 text-gray-text font-medium">매출 이익</th>
@@ -337,14 +361,17 @@ export default function MonthlySales({ user }: MonthlySalesProps) {
                   {monthlyData.map((month) => (
                     <tr key={month.month} className="border-b border-gray-border hover:bg-bg-lighter transition-colors">
                       <td className="py-3 px-4 text-white font-medium">{month.month}월</td>
-                      <td className="py-3 px-4 text-right text-white">
-                        {formatAmount(month.revenue)}천원
+                      <td className="py-3 px-4 text-right text-blue-400">
+                        {formatAmount(month.targetSales)}원
                       </td>
                       <td className="py-3 px-4 text-right text-white">
-                        {formatAmount(month.cost)}천원
+                        {formatAmount(month.revenue)}원
+                      </td>
+                      <td className="py-3 px-4 text-right text-white">
+                        {formatAmount(month.cost)}원
                       </td>
                       <td className={`py-3 px-4 text-right font-semibold ${month.profit >= 0 ? 'text-green-400' : 'text-red-400'}`}>
-                        {formatAmount(month.profit)}천원
+                        {formatAmount(month.profit)}원
                       </td>
                     </tr>
                   ))}
@@ -353,14 +380,17 @@ export default function MonthlySales({ user }: MonthlySalesProps) {
                   {summary && (
                     <tr className="border-t-2 border-gray-border bg-bg-darker">
                       <td className="py-3 px-4 text-white font-bold">누적</td>
-                      <td className="py-3 px-4 text-right text-white font-bold">
-                        {formatAmount(summary.revenue)}천원
+                      <td className="py-3 px-4 text-right text-blue-400 font-bold">
+                        {formatAmount(summary.targetSales)}원
                       </td>
                       <td className="py-3 px-4 text-right text-white font-bold">
-                        {formatAmount(summary.cost)}천원
+                        {formatAmount(summary.revenue)}원
+                      </td>
+                      <td className="py-3 px-4 text-right text-white font-bold">
+                        {formatAmount(summary.cost)}원
                       </td>
                       <td className={`py-3 px-4 text-right font-bold text-lg ${summary.profit >= 0 ? 'text-green-400' : 'text-red-400'}`}>
-                        {formatAmount(summary.profit)}천원
+                        {formatAmount(summary.profit)}원
                       </td>
                     </tr>
                   )}

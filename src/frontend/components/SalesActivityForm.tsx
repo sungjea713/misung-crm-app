@@ -90,6 +90,19 @@ export function SalesActivityForm({ user, activity, onClose, onSave, onDelete }:
     setError('');
   };
 
+  // 금액 입력 처리 (천 단위 콤마 표시)
+  const handleAmountChange = (value: string) => {
+    const numericValue = value.replace(/[^\d]/g, '');
+    const numberValue = numericValue === '' ? undefined : parseFloat(numericValue);
+    setFormData({ ...formData, amount: numberValue });
+  };
+
+  // 천 단위 콤마 포맷
+  const formatNumber = (value: number | undefined): string => {
+    if (!value) return '';
+    return value.toLocaleString('ko-KR');
+  };
+
   const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = e.target.files;
     if (!files || files.length === 0) return;
@@ -452,12 +465,12 @@ export function SalesActivityForm({ user, activity, onClose, onSave, onDelete }:
               금액 (원)
             </label>
             <input
-              type="number"
-              value={formData.amount || ''}
-              onChange={(e) => setFormData({ ...formData, amount: e.target.value ? parseFloat(e.target.value) : undefined })}
-              className="input-field"
-              placeholder="금액을 입력하세요"
-              step="1000"
+              type="text"
+              value={formatNumber(formData.amount)}
+              onChange={(e) => handleAmountChange(e.target.value)}
+              disabled={loading}
+              className="input-field text-right"
+              placeholder="0"
             />
           </div>
 

@@ -11,50 +11,15 @@ import {
   Legend,
   ResponsiveContainer,
 } from 'recharts';
-import type { User } from '../../types';
+import type { User, MonthlyOrderStats, OrderSummary } from '../../types';
 
 interface OrderAchievementProps {
   user: User;
 }
 
-interface MonthlyOrderData {
-  month: number;
-  salesContribution: {
-    order: number;
-    execution: number;
-    profit: number;
-  };
-  profitContribution: {
-    order: number;
-    execution: number;
-    profit: number;
-  };
-  total: {
-    order: number;
-    execution: number;
-    profit: number;
-  };
-}
-
 interface OrderStatsData {
-  monthly: MonthlyOrderData[];
-  summary: {
-    salesContribution: {
-      order: number;
-      execution: number;
-      profit: number;
-    };
-    profitContribution: {
-      order: number;
-      execution: number;
-      profit: number;
-    };
-    total: {
-      order: number;
-      execution: number;
-      profit: number;
-    };
-  };
+  monthly: MonthlyOrderStats[];
+  summary: OrderSummary;
 }
 
 export default function OrderAchievement({ user }: OrderAchievementProps) {
@@ -140,7 +105,7 @@ export default function OrderAchievement({ user }: OrderAchievementProps) {
   };
 
   const formatAmount = (amount: number) => {
-    return new Intl.NumberFormat('ko-KR').format(Math.round(amount / 1000));
+    return Math.round(amount).toLocaleString('ko-KR');
   };
 
   const getYearOptions = () => {
@@ -164,7 +129,7 @@ export default function OrderAchievement({ user }: OrderAchievementProps) {
           <p className="text-white font-semibold mb-2">{label}</p>
           {payload.map((entry: any, index: number) => (
             <p key={`item-${index}`} className="text-sm" style={{ color: entry.color }}>
-              {entry.name}: {formatAmount(entry.value)}천원
+              {entry.name}: {formatAmount(entry.value * 1000)}원
             </p>
           ))}
         </div>
@@ -203,7 +168,7 @@ export default function OrderAchievement({ user }: OrderAchievementProps) {
       <div className="flex items-center justify-between mb-6">
         <div>
           <h1 className="page-title">수주 실적 및 목표 달성률</h1>
-          <p className="page-description">월별 수주 실적을 확인합니다. (단위: 천원)</p>
+          <p className="page-description">월별 수주 실적을 확인합니다.</p>
         </div>
         <button
           onClick={fetchOrderStats}
@@ -262,6 +227,49 @@ export default function OrderAchievement({ user }: OrderAchievementProps) {
       {/* Summary Cards */}
       {data && (
         <>
+          {/* 목표 수주 카드 (첫 번째 행) */}
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
+            {/* 목표 매출 기여 */}
+            <div className="card bg-gradient-to-br from-amber-500/10 to-bg-lighter border border-amber-500/20">
+              <div className="flex items-center gap-3 mb-4">
+                <div className="w-10 h-10 rounded-lg bg-amber-500/20 flex items-center justify-center">
+                  <Target size={20} className="text-amber-400" />
+                </div>
+                <h3 className="text-lg font-semibold text-white">목표 매출 기여</h3>
+              </div>
+              <div className="text-2xl font-bold text-amber-400">
+                {formatAmount(data.summary.targetSalesContribution)} <span className="text-sm text-gray-text">원</span>
+              </div>
+            </div>
+
+            {/* 목표 이익 기여 */}
+            <div className="card bg-gradient-to-br from-amber-500/10 to-bg-lighter border border-amber-500/20">
+              <div className="flex items-center gap-3 mb-4">
+                <div className="w-10 h-10 rounded-lg bg-amber-500/20 flex items-center justify-center">
+                  <Target size={20} className="text-amber-400" />
+                </div>
+                <h3 className="text-lg font-semibold text-white">목표 이익 기여</h3>
+              </div>
+              <div className="text-2xl font-bold text-amber-400">
+                {formatAmount(data.summary.targetProfitContribution)} <span className="text-sm text-gray-text">원</span>
+              </div>
+            </div>
+
+            {/* 목표 합계 */}
+            <div className="card bg-gradient-to-br from-amber-500/10 to-bg-lighter border border-amber-500/20">
+              <div className="flex items-center gap-3 mb-4">
+                <div className="w-10 h-10 rounded-lg bg-amber-500/20 flex items-center justify-center">
+                  <Target size={20} className="text-amber-400" />
+                </div>
+                <h3 className="text-lg font-semibold text-white">목표 합계</h3>
+              </div>
+              <div className="text-2xl font-bold text-amber-400">
+                {formatAmount(data.summary.targetTotal)} <span className="text-sm text-gray-text">원</span>
+              </div>
+            </div>
+          </div>
+
+          {/* 실적 카드 (두 번째 행) */}
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
             {/* 매출 기여 */}
             <div className="card bg-gradient-to-br from-blue-500/10 to-bg-lighter border border-blue-500/20">
@@ -275,13 +283,13 @@ export default function OrderAchievement({ user }: OrderAchievementProps) {
                 <div className="flex justify-between text-sm">
                   <span className="text-gray-text">확정 수주</span>
                   <span className="text-white font-semibold">
-                    {formatAmount(data.summary.salesContribution.order)}천원
+                    {formatAmount(data.summary.salesContribution.order)}원
                   </span>
                 </div>
                 <div className="flex justify-between text-sm">
                   <span className="text-gray-text">예정 이익</span>
                   <span className="text-blue-400 font-semibold">
-                    {formatAmount(data.summary.salesContribution.profit)}천원
+                    {formatAmount(data.summary.salesContribution.profit)}원
                   </span>
                 </div>
               </div>
@@ -299,13 +307,13 @@ export default function OrderAchievement({ user }: OrderAchievementProps) {
                 <div className="flex justify-between text-sm">
                   <span className="text-gray-text">확정 수주</span>
                   <span className="text-white font-semibold">
-                    {formatAmount(data.summary.profitContribution.order)}천원
+                    {formatAmount(data.summary.profitContribution.order)}원
                   </span>
                 </div>
                 <div className="flex justify-between text-sm">
                   <span className="text-gray-text">예정 이익</span>
                   <span className="text-green-400 font-semibold">
-                    {formatAmount(data.summary.profitContribution.profit)}천원
+                    {formatAmount(data.summary.profitContribution.profit)}원
                   </span>
                 </div>
               </div>
@@ -323,13 +331,13 @@ export default function OrderAchievement({ user }: OrderAchievementProps) {
                 <div className="flex justify-between text-sm">
                   <span className="text-gray-text">총 확정 수주</span>
                   <span className="text-white font-semibold">
-                    {formatAmount(data.summary.total.order)}천원
+                    {formatAmount(data.summary.total.order)}원
                   </span>
                 </div>
                 <div className="flex justify-between text-sm">
                   <span className="text-gray-text">총 예정 이익</span>
                   <span className="text-purple-400 font-bold text-lg">
-                    {formatAmount(data.summary.total.profit)}천원
+                    {formatAmount(data.summary.total.profit)}원
                   </span>
                 </div>
               </div>
@@ -374,7 +382,7 @@ export default function OrderAchievement({ user }: OrderAchievementProps) {
                     style={{ fontSize: '14px', fontWeight: '500' }}
                     tickFormatter={(value) => `${value.toLocaleString()}`}
                     label={{
-                      value: '(천원)',
+                      value: '(원)',
                       angle: -90,
                       position: 'insideLeft',
                       style: { fill: '#9ca3af', fontSize: '12px' },
@@ -424,25 +432,28 @@ export default function OrderAchievement({ user }: OrderAchievementProps) {
             <thead>
               <tr className="border-b-2 border-gray-border">
                 <th className="px-4 py-3 text-left text-sm font-semibold text-gray-text">월</th>
-                <th colSpan={3} className="px-4 py-3 text-center text-sm font-semibold text-blue-400 border-l border-gray-border">
+                <th colSpan={4} className="px-4 py-3 text-center text-sm font-semibold text-blue-400 border-l border-gray-border">
                   매출 기여 (실행율 90%▲)
                 </th>
-                <th colSpan={3} className="px-4 py-3 text-center text-sm font-semibold text-green-400 border-l border-gray-border">
+                <th colSpan={4} className="px-4 py-3 text-center text-sm font-semibold text-green-400 border-l border-gray-border">
                   이익 기여 (실행율 90%▼)
                 </th>
-                <th colSpan={3} className="px-4 py-3 text-center text-sm font-semibold text-purple-400 border-l border-gray-border">
+                <th colSpan={4} className="px-4 py-3 text-center text-sm font-semibold text-purple-400 border-l border-gray-border">
                   합계
                 </th>
               </tr>
               <tr className="border-b border-gray-border">
                 <th className="px-4 py-2 text-left text-xs font-medium text-gray-text"></th>
-                <th className="px-4 py-2 text-center text-xs font-medium text-gray-text border-l border-gray-border">확정 수주</th>
+                <th className="px-4 py-2 text-center text-xs font-medium text-amber-400 border-l border-gray-border">목표 수주</th>
+                <th className="px-4 py-2 text-center text-xs font-medium text-gray-text">확정 수주</th>
                 <th className="px-4 py-2 text-center text-xs font-medium text-gray-text">실행</th>
                 <th className="px-4 py-2 text-center text-xs font-medium text-gray-text">예정 이익</th>
-                <th className="px-4 py-2 text-center text-xs font-medium text-gray-text border-l border-gray-border">확정 수주</th>
+                <th className="px-4 py-2 text-center text-xs font-medium text-amber-400 border-l border-gray-border">목표 수주</th>
+                <th className="px-4 py-2 text-center text-xs font-medium text-gray-text">확정 수주</th>
                 <th className="px-4 py-2 text-center text-xs font-medium text-gray-text">실행</th>
                 <th className="px-4 py-2 text-center text-xs font-medium text-gray-text">예정 이익</th>
-                <th className="px-4 py-2 text-center text-xs font-medium text-gray-text border-l border-gray-border">확정 수주</th>
+                <th className="px-4 py-2 text-center text-xs font-medium text-amber-400 border-l border-gray-border">목표 합계</th>
+                <th className="px-4 py-2 text-center text-xs font-medium text-gray-text">확정 수주</th>
                 <th className="px-4 py-2 text-center text-xs font-medium text-gray-text">실행</th>
                 <th className="px-4 py-2 text-center text-xs font-medium text-gray-text">예정 이익</th>
               </tr>
@@ -453,7 +464,10 @@ export default function OrderAchievement({ user }: OrderAchievementProps) {
                   <td className="px-4 py-3 text-sm font-medium text-gray-text">{getMonthName(monthData.month)}</td>
 
                   {/* 매출 기여 */}
-                  <td className="px-4 py-3 text-sm text-right border-l border-gray-border">
+                  <td className="px-4 py-3 text-sm text-right border-l border-gray-border text-amber-400">
+                    {formatAmount(monthData.targetSalesContribution)}
+                  </td>
+                  <td className="px-4 py-3 text-sm text-right">
                     {formatAmount(monthData.salesContribution.order)}
                   </td>
                   <td className="px-4 py-3 text-sm text-right">
@@ -464,7 +478,10 @@ export default function OrderAchievement({ user }: OrderAchievementProps) {
                   </td>
 
                   {/* 이익 기여 */}
-                  <td className="px-4 py-3 text-sm text-right border-l border-gray-border">
+                  <td className="px-4 py-3 text-sm text-right border-l border-gray-border text-amber-400">
+                    {formatAmount(monthData.targetProfitContribution)}
+                  </td>
+                  <td className="px-4 py-3 text-sm text-right">
                     {formatAmount(monthData.profitContribution.order)}
                   </td>
                   <td className="px-4 py-3 text-sm text-right">
@@ -475,7 +492,10 @@ export default function OrderAchievement({ user }: OrderAchievementProps) {
                   </td>
 
                   {/* 합계 */}
-                  <td className="px-4 py-3 text-sm text-right border-l border-gray-border font-semibold">
+                  <td className="px-4 py-3 text-sm text-right border-l border-gray-border text-amber-400 font-semibold">
+                    {formatAmount(monthData.targetTotal)}
+                  </td>
+                  <td className="px-4 py-3 text-sm text-right font-semibold">
                     {formatAmount(monthData.total.order)}
                   </td>
                   <td className="px-4 py-3 text-sm text-right font-semibold">
@@ -492,7 +512,10 @@ export default function OrderAchievement({ user }: OrderAchievementProps) {
                 <td className="px-4 py-3 text-sm font-bold text-gray-text">누계</td>
 
                 {/* 매출 기여 누계 */}
-                <td className="px-4 py-3 text-sm text-right font-bold border-l border-gray-border text-blue-400">
+                <td className="px-4 py-3 text-sm text-right font-bold border-l border-gray-border text-amber-400">
+                  {formatAmount(data.summary.targetSalesContribution)}
+                </td>
+                <td className="px-4 py-3 text-sm text-right font-bold text-blue-400">
                   {formatAmount(data.summary.salesContribution.order)}
                 </td>
                 <td className="px-4 py-3 text-sm text-right font-bold text-blue-400">
@@ -503,7 +526,10 @@ export default function OrderAchievement({ user }: OrderAchievementProps) {
                 </td>
 
                 {/* 이익 기여 누계 */}
-                <td className="px-4 py-3 text-sm text-right font-bold border-l border-gray-border text-green-400">
+                <td className="px-4 py-3 text-sm text-right font-bold border-l border-gray-border text-amber-400">
+                  {formatAmount(data.summary.targetProfitContribution)}
+                </td>
+                <td className="px-4 py-3 text-sm text-right font-bold text-green-400">
                   {formatAmount(data.summary.profitContribution.order)}
                 </td>
                 <td className="px-4 py-3 text-sm text-right font-bold text-green-400">
@@ -514,7 +540,10 @@ export default function OrderAchievement({ user }: OrderAchievementProps) {
                 </td>
 
                 {/* 합계 누계 */}
-                <td className="px-4 py-3 text-sm text-right font-bold border-l border-gray-border text-purple-400">
+                <td className="px-4 py-3 text-sm text-right font-bold border-l border-gray-border text-amber-400">
+                  {formatAmount(data.summary.targetTotal)}
+                </td>
+                <td className="px-4 py-3 text-sm text-right font-bold text-purple-400">
                   {formatAmount(data.summary.total.order)}
                 </td>
                 <td className="px-4 py-3 text-sm text-right font-bold text-purple-400">

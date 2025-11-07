@@ -21,6 +21,9 @@ interface MonthlyOrderData {
     execution: number;
     profit: number;
   };
+  targetSalesContribution: number;
+  targetProfitContribution: number;
+  targetTotal: number;
 }
 
 interface OrderStatsResponse {
@@ -43,6 +46,9 @@ interface OrderStatsResponse {
         execution: number;
         profit: number;
       };
+      targetSalesContribution: number;
+      targetProfitContribution: number;
+      targetTotal: number;
     };
   };
   message?: string;
@@ -90,7 +96,20 @@ export async function getOrderStats(year: number, userName: string): Promise<Ord
     // 4. construction_management에서 이익 기여 데이터 조회
     const profitData = await fetchOrderData(profitCmsList, year);
 
-    // 5. 월별 집계
+    // 5. weekly_plans에서 목표 수주 데이터 조회
+    const { data: weeklyPlansData, error: weeklyPlansError } = await supabase
+      .from('weekly_plans')
+      .select('created_at, target_order_sales_contribution, target_order_profit_contribution')
+      .ilike('sales_manager', `${userName}%`)
+      .gte('created_at', `${year}-01-01`)
+      .lt('created_at', `${year + 1}-01-01`);
+
+    if (weeklyPlansError) {
+      console.error('Error fetching weekly_plans:', weeklyPlansError);
+      // 목표 수주 조회 실패 시 경고만 출력하고 계속 진행
+    }
+
+    // 6. 월별 집계
     const monthlyMap = new Map<number, MonthlyOrderData>();
     for (let month = 1; month <= 12; month++) {
       monthlyMap.set(month, {
@@ -98,6 +117,9 @@ export async function getOrderStats(year: number, userName: string): Promise<Ord
         salesContribution: { order: 0, execution: 0, profit: 0 },
         profitContribution: { order: 0, execution: 0, profit: 0 },
         total: { order: 0, execution: 0, profit: 0 },
+        targetSalesContribution: 0,
+        targetProfitContribution: 0,
+        targetTotal: 0,
       });
     }
 
@@ -121,6 +143,23 @@ export async function getOrderStats(year: number, userName: string): Promise<Ord
       }
     });
 
+    // 목표 수주 데이터 집계
+    weeklyPlansData?.forEach((row: any) => {
+      if (row.created_at) {
+        try {
+          const date = new Date(row.created_at);
+          const month = date.getMonth() + 1; // 1-12
+          if (month >= 1 && month <= 12) {
+            const current = monthlyMap.get(month)!;
+            current.targetSalesContribution += row.target_order_sales_contribution || 0;
+            current.targetProfitContribution += row.target_order_profit_contribution || 0;
+          }
+        } catch (error) {
+          console.error('Invalid created_at:', row.created_at);
+        }
+      }
+    });
+
     // 예정 이익 및 합계 계산
     monthlyMap.forEach((data) => {
       // 예정 이익 = 확정 수주 - 실행
@@ -133,6 +172,9 @@ export async function getOrderStats(year: number, userName: string): Promise<Ord
       data.total.order = data.salesContribution.order + data.profitContribution.order;
       data.total.execution = data.salesContribution.execution + data.profitContribution.execution;
       data.total.profit = data.salesContribution.profit + data.profitContribution.profit;
+
+      // 목표 합계 계산
+      data.targetTotal = data.targetSalesContribution + data.targetProfitContribution;
     });
 
     // 6. 배열로 변환 및 정렬
@@ -143,6 +185,9 @@ export async function getOrderStats(year: number, userName: string): Promise<Ord
       salesContribution: { order: 0, execution: 0, profit: 0 },
       profitContribution: { order: 0, execution: 0, profit: 0 },
       total: { order: 0, execution: 0, profit: 0 },
+      targetSalesContribution: 0,
+      targetProfitContribution: 0,
+      targetTotal: 0,
     };
 
     monthly.forEach((m) => {
@@ -157,6 +202,10 @@ export async function getOrderStats(year: number, userName: string): Promise<Ord
       summary.total.order += m.total.order;
       summary.total.execution += m.total.execution;
       summary.total.profit += m.total.profit;
+
+      summary.targetSalesContribution += m.targetSalesContribution;
+      summary.targetProfitContribution += m.targetProfitContribution;
+      summary.targetTotal += m.targetTotal;
     });
 
     return {
@@ -220,6 +269,9 @@ function createEmptyResponse(): OrderStatsResponse {
       salesContribution: { order: 0, execution: 0, profit: 0 },
       profitContribution: { order: 0, execution: 0, profit: 0 },
       total: { order: 0, execution: 0, profit: 0 },
+      targetSalesContribution: 0,
+      targetProfitContribution: 0,
+      targetTotal: 0,
     });
   }
 
@@ -231,6 +283,9 @@ function createEmptyResponse(): OrderStatsResponse {
         salesContribution: { order: 0, execution: 0, profit: 0 },
         profitContribution: { order: 0, execution: 0, profit: 0 },
         total: { order: 0, execution: 0, profit: 0 },
+        targetSalesContribution: 0,
+        targetProfitContribution: 0,
+        targetTotal: 0,
       },
     },
   };
