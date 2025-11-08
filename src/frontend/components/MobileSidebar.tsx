@@ -7,9 +7,10 @@ interface MobileSidebarProps {
   onClose: () => void;
   currentPath: string;
   onNavigate: (path: string) => void;
+  userRole?: 'admin' | 'user';
 }
 
-export default function MobileSidebar({ isOpen, onClose, currentPath, onNavigate }: MobileSidebarProps) {
+export default function MobileSidebar({ isOpen, onClose, currentPath, onNavigate, userRole }: MobileSidebarProps) {
   const handleNavigate = (path: string) => {
     onNavigate(path);
     onClose(); // 네비게이션 후 자동으로 사이드바 닫기
@@ -42,7 +43,7 @@ export default function MobileSidebar({ isOpen, onClose, currentPath, onNavigate
 
           {/* 사이드바 컨텐츠 */}
           <div className="h-full overflow-y-auto">
-            <Sidebar currentPath={currentPath} onNavigate={handleNavigate} />
+            <Sidebar currentPath={currentPath} onNavigate={handleNavigate} userRole={userRole} />
           </div>
         </div>
       </div>

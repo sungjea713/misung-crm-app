@@ -15,11 +15,16 @@ import {
   Activity,
   ChevronDown,
   ChevronRight,
+  Shield,
+  AlertTriangle,
+  CheckCircle,
+  TrendingDown,
 } from 'lucide-react';
 
 interface SidebarProps {
   currentPath: string;
   onNavigate: (path: string) => void;
+  userRole?: 'admin' | 'user';
 }
 
 interface MenuItem {
@@ -111,9 +116,34 @@ const menuItems: MenuItem[] = [
       },
     ],
   },
+  {
+    id: 'admin',
+    label: '관리자 입력',
+    icon: Shield,
+    children: [
+      {
+        id: 'over-investment',
+        label: '월별 과투입 현황',
+        icon: AlertTriangle,
+        path: '/admin/over-investment',
+      },
+      {
+        id: 'confirmed-collection',
+        label: '월별 확정 수금',
+        icon: CheckCircle,
+        path: '/admin/confirmed-collection',
+      },
+      {
+        id: 'outstanding-balance',
+        label: '월별 미수금 누계',
+        icon: TrendingDown,
+        path: '/admin/outstanding-balance',
+      },
+    ],
+  },
 ];
 
-export default function Sidebar({ currentPath, onNavigate }: SidebarProps) {
+export default function Sidebar({ currentPath, onNavigate, userRole }: SidebarProps) {
   const [expandedItems, setExpandedItems] = useState<string[]>(['performance', 'analytics']);
 
   const toggleExpanded = (itemId: string) => {
@@ -186,7 +216,9 @@ export default function Sidebar({ currentPath, onNavigate }: SidebarProps) {
 
       {/* Menu Items */}
       <nav className="flex-1 overflow-y-auto py-4">
-        {menuItems.map((item) => renderMenuItem(item))}
+        {menuItems
+          .filter((item) => item.id !== 'admin' || userRole === 'admin')
+          .map((item) => renderMenuItem(item))}
       </nav>
 
       {/* Footer */}

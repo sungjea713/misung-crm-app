@@ -28,7 +28,7 @@ export default function Layout({ user, currentPath, onNavigate, onLogout, childr
       <div className="flex-1 flex overflow-hidden">
         {/* Desktop Sidebar - hidden on mobile */}
         <div className="hidden lg:block">
-          <Sidebar currentPath={currentPath} onNavigate={onNavigate} />
+          <Sidebar currentPath={currentPath} onNavigate={onNavigate} userRole={user.role} />
         </div>
 
         {/* Mobile Sidebar */}
@@ -37,6 +37,7 @@ export default function Layout({ user, currentPath, onNavigate, onLogout, childr
           onClose={() => setIsMobileSidebarOpen(false)}
           currentPath={currentPath}
           onNavigate={onNavigate}
+          userRole={user.role}
         />
 
         {/* Page Content - 모바일에서 전체 너비 사용 */}
