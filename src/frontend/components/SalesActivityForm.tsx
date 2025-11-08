@@ -541,13 +541,12 @@ export function SalesActivityForm({ user, activity, onClose, onSave, onDelete }:
               value={formData.execution_rate || ''}
               onChange={(e) => {
                 const value = e.target.value ? parseInt(e.target.value) : undefined;
-                if (value !== undefined && (value < 0 || value > 100)) return;
+                if (value !== undefined && value < 0) return;
                 setFormData({ ...formData, execution_rate: value });
               }}
               className="input-field"
-              placeholder="0-100 사이의 숫자를 입력하세요"
+              placeholder="숫자를 입력하세요"
               min="0"
-              max="100"
             />
           </div>
 
