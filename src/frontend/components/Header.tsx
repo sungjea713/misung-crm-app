@@ -1,7 +1,6 @@
 import React from 'react';
 import { LogOut, User, Menu } from 'lucide-react';
 import type { User as UserType } from '../types';
-import misungLogo from '../images/misung-logo.png';
 
 interface HeaderProps {
   user: UserType;
@@ -27,7 +26,7 @@ export default function Header({ user, onLogout, onMenuToggle }: HeaderProps) {
           )}
 
           {/* Logo */}
-          <img src={misungLogo} alt="미성 E&C" className="h-8 sm:h-10" />
+          <img src="/misung-logo.png" alt="미성 E&C" className="h-8 sm:h-10" />
         </div>
 
         {/* Right side - User Info */}
