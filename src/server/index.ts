@@ -72,11 +72,12 @@ const server = Bun.serve({
     const url = new URL(req.url);
     const pathname = url.pathname;
 
-    // Serve PWA assets directly
+    // Serve PWA assets and static files from public directory
     if (pathname === '/manifest.json' ||
         pathname === '/service-worker.js' ||
         pathname === '/icon.svg' ||
-        pathname.startsWith('/icon-')) {
+        pathname.startsWith('/icon-') ||
+        pathname === '/misung-logo.png') {
       const file = Bun.file(`public${pathname}`);
       if (await file.exists()) {
         return new Response(file, {
@@ -85,6 +86,7 @@ const server = Bun.serve({
               pathname.endsWith('.json') ? 'application/json' :
               pathname.endsWith('.js') ? 'application/javascript' :
               pathname.endsWith('.svg') ? 'image/svg+xml' :
+              pathname.endsWith('.png') ? 'image/png' :
               'text/plain',
             'Cache-Control': pathname === '/service-worker.js'
               ? 'no-cache' // Service worker should always be fresh
