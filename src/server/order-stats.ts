@@ -56,6 +56,7 @@ interface OrderStatsResponse {
 
 export async function getOrderStats(year: number, userName: string): Promise<OrderStatsResponse> {
   try {
+    console.log('⭐⭐⭐ [order-stats] START - Year:', year, 'User:', userName);
     // 1. site_summary에서 사용자 매칭하여 cms 코드 추출
     const { data: siteSummary, error: siteError } = await supabase
       .from('site_summary')
@@ -63,13 +64,16 @@ export async function getOrderStats(year: number, userName: string): Promise<Ord
       .ilike('sales_manager', `${userName}%`);
 
     if (siteError) {
-      console.error('Error fetching site_summary:', siteError);
+      console.error('❌ [order-stats] Error fetching site_summary:', siteError);
       return { success: false, message: '현장 정보를 불러오지 못했습니다.' };
     }
 
+    console.log('📋 [order-stats] Found', siteSummary?.length || 0, 'sites in site_summary');
+
     if (!siteSummary || siteSummary.length === 0) {
-      // 데이터가 없어도 빈 결과 반환
-      return createEmptyResponse();
+      console.log('⚠️ [order-stats] No sites found, but continuing to check weekly_plans...');
+      // 데이터가 없어도 빈 결과 반환하지 않고 weekly_plans 조회는 계속 진행
+      // return createEmptyResponse();
     }
 
     // 2. 매출 기여와 이익 기여로 cms 코드 분류
@@ -97,16 +101,22 @@ export async function getOrderStats(year: number, userName: string): Promise<Ord
     const profitData = await fetchOrderData(profitCmsList, year);
 
     // 5. weekly_plans에서 목표 수주 데이터 조회
+    // plan_type이 'target' 또는 'both'인 레코드만 조회
+    console.log('🔍 [order-stats] Querying weekly_plans for user:', userName, 'year:', year);
     const { data: weeklyPlansData, error: weeklyPlansError } = await supabase
       .from('weekly_plans')
-      .select('created_at, target_order_sales_contribution, target_order_profit_contribution')
-      .ilike('sales_manager', `${userName}%`)
+      .select('created_at, target_order_sales_contribution, target_order_profit_contribution, plan_type, created_by')
+      .eq('created_by', userName)
+      .in('plan_type', ['target', 'both'])
       .gte('created_at', `${year}-01-01`)
       .lt('created_at', `${year + 1}-01-01`);
 
     if (weeklyPlansError) {
-      console.error('Error fetching weekly_plans:', weeklyPlansError);
+      console.error('❌ [order-stats] Error fetching weekly_plans:', weeklyPlansError);
       // 목표 수주 조회 실패 시 경고만 출력하고 계속 진행
+    } else {
+      console.log('✅ [order-stats] Found', weeklyPlansData?.length || 0, 'weekly plans');
+      console.log('📊 [order-stats] Weekly plans data:', JSON.stringify(weeklyPlansData, null, 2));
     }
 
     // 6. 월별 집계

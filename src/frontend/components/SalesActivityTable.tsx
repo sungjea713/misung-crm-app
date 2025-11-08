@@ -99,10 +99,14 @@ export function SalesActivityTable({ activities, user, onEdit, onDelete }: Sales
                 {getSiteTypeBadge(activity.site_type)}
               </td>
               <td className="px-4 py-4 text-sm text-white">
-                {activity.site_name || '-'}
+                {activity.site_type === 'new'
+                  ? (activity.new_site_name || '-')
+                  : (activity.site_name || '-')}
               </td>
               <td className="px-4 py-4 text-sm text-white">
-                {activity.client || '-'}
+                {activity.site_type === 'new'
+                  ? (activity.new_client || '-')
+                  : (activity.client || '-')}
               </td>
               <td className="px-4 py-4 text-sm text-white text-right font-medium">
                 {formatAmount(activity.amount)}

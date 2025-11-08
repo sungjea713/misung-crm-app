@@ -46,6 +46,10 @@ export default function SalesActivity({ user }: SalesActivityProps) {
   // Fetch activities when filters change
   useEffect(() => {
     if (viewMode === 'list') {
+      // Admin: wait until selectedUser is set before fetching
+      if (user.role === 'admin' && !selectedUser) {
+        return;
+      }
       fetchActivities();
     }
   }, [selectedUser, year, month, activityType, siteType, page, viewMode]);

@@ -11,7 +11,7 @@ interface WeeklyPlanPageProps {
 export default function WeeklyPlanPage({ user }: WeeklyPlanPageProps) {
   const [plans, setPlans] = useState<WeeklyPlan[]>([]);
   const [loading, setLoading] = useState(false);
-  const [viewMode, setViewMode] = useState<'list' | 'form'>('list');
+  const [viewMode, setViewMode] = useState<'list' | 'activity-form' | 'target-form'>('list');
   const [editingPlan, setEditingPlan] = useState<WeeklyPlan | undefined>();
   const [error, setError] = useState('');
 
@@ -142,9 +142,14 @@ export default function WeeklyPlanPage({ user }: WeeklyPlanPageProps) {
     setEditingPlan(undefined);
   };
 
-  const handleNewForm = () => {
+  const handleNewActivityForm = () => {
     setEditingPlan(undefined);
-    setViewMode('form');
+    setViewMode('activity-form');
+  };
+
+  const handleNewTargetForm = () => {
+    setEditingPlan(undefined);
+    setViewMode('target-form');
   };
 
   const handlePageChange = (newPage: number) => {
@@ -158,15 +163,9 @@ export default function WeeklyPlanPage({ user }: WeeklyPlanPageProps) {
     <div className="page-container">
       {viewMode === 'list' ? (
         <>
-          <div className="flex items-center justify-between mb-6">
-            <div>
-              <h1 className="page-title mb-2">주간 업무 계획</h1>
-              <p className="page-description">주간 단위 업무 계획을 작성하고 관리합니다.</p>
-            </div>
-            <button onClick={handleNewForm} className="btn-primary flex items-center space-x-2">
-              <Plus size={20} />
-              <span>새로 작성</span>
-            </button>
+          <div className="mb-6">
+            <h1 className="page-title mb-2">주간 업무 계획</h1>
+            <p className="page-description">주간 단위 업무 계획을 작성하고 관리합니다.</p>
           </div>
 
           {/* 필터 영역 */}
@@ -252,7 +251,6 @@ export default function WeeklyPlanPage({ user }: WeeklyPlanPageProps) {
             </div>
           )}
 
-          {/* 테이블 */}
           {loading ? (
             <div className="card">
               <div className="flex flex-col items-center justify-center py-20 text-gray-text">
@@ -261,12 +259,43 @@ export default function WeeklyPlanPage({ user }: WeeklyPlanPageProps) {
               </div>
             </div>
           ) : (
-            <WeeklyPlanTable
-              plans={plans}
-              onEdit={handleEdit}
-              pagination={pagination}
-              onPageChange={handlePageChange}
-            />
+            <div className="space-y-8">
+              {/* 목표 활동 계획 섹션 */}
+              <div>
+                <div className="flex items-center justify-between mb-4">
+                  <h2 className="text-xl font-bold text-white">목표 활동 계획</h2>
+                  <button onClick={handleNewActivityForm} className="btn-primary flex items-center space-x-2">
+                    <Plus size={20} />
+                    <span>새로 작성</span>
+                  </button>
+                </div>
+                <WeeklyPlanTable
+                  plans={plans}
+                  onEdit={handleEdit}
+                  pagination={pagination}
+                  onPageChange={handlePageChange}
+                  showOnlyActivities={true}
+                />
+              </div>
+
+              {/* 목표 금액 계획 섹션 */}
+              <div>
+                <div className="flex items-center justify-between mb-4">
+                  <h2 className="text-xl font-bold text-white">목표 금액 계획</h2>
+                  <button onClick={handleNewTargetForm} className="btn-primary flex items-center space-x-2">
+                    <Plus size={20} />
+                    <span>새로 작성</span>
+                  </button>
+                </div>
+                <WeeklyPlanTable
+                  plans={plans}
+                  onEdit={handleEdit}
+                  pagination={pagination}
+                  onPageChange={handlePageChange}
+                  showOnlyTargets={true}
+                />
+              </div>
+            </div>
           )}
         </>
       ) : (
@@ -276,6 +305,7 @@ export default function WeeklyPlanPage({ user }: WeeklyPlanPageProps) {
           onClose={handleCloseForm}
           onSave={handleSave}
           onDelete={editingPlan ? handleDelete : undefined}
+          formType={viewMode === 'activity-form' ? 'activity' : 'target'}
         />
       )}
     </div>

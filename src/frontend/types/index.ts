@@ -82,6 +82,7 @@ export interface WeeklyPlan {
   target_order_profit_contribution?: number;
   target_order_total?: number;
   target_collection?: number;
+  plan_type?: 'activity' | 'target' | 'both';
   created_at: string;
   updated_at: string;
   created_by: string;
@@ -103,6 +104,7 @@ export interface WeeklyPlanFormData {
   target_order_profit_contribution?: number;
   target_order_total?: number;
   target_collection?: number;
+  plan_type?: 'activity' | 'target' | 'both';
 }
 
 export interface WeeklyPlanFilters {

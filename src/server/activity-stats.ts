@@ -91,9 +91,11 @@ interface AllUsersStatsResponse {
 export async function getActivityStats(year: number, userId?: string): Promise<ActivityStatsResponse> {
   try {
     // 주간 계획 데이터 집계
+    // plan_type이 'activity' 또는 'both'인 레코드만 조회
     let weeklyQuery = supabase
       .from('weekly_plans')
       .select('*')
+      .in('plan_type', ['activity', 'both'])
       .gte('created_at', `${year}-01-01`)
       .lt('created_at', `${year + 1}-01-01`);
 

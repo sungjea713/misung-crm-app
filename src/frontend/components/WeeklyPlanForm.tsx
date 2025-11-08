@@ -9,9 +9,10 @@ interface WeeklyPlanFormProps {
   onClose: () => void;
   onSave: (data: WeeklyPlanFormData) => Promise<void>;
   onDelete?: (id: number) => Promise<void>;
+  formType?: 'activity' | 'target';
 }
 
-export function WeeklyPlanForm({ user, plan, onClose, onSave, onDelete }: WeeklyPlanFormProps) {
+export function WeeklyPlanForm({ user, plan, onClose, onSave, onDelete, formType = 'activity' }: WeeklyPlanFormProps) {
   const isEdit = !!plan;
   const [loading, setLoading] = useState(false);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
@@ -130,24 +131,45 @@ export function WeeklyPlanForm({ user, plan, onClose, onSave, onDelete }: Weekly
     e.preventDefault();
     setError('');
 
-    // 유효성 검사 - cms_id 또는 cms_code와 site_name이 있어야 함
-    if (!formData.cms_id && !formData.cms_code && !formData.site_name) {
-      setError('현장을 선택해주세요.');
-      return;
-    }
+    // formType에 따른 유효성 검사
+    if (formType === 'activity') {
+      // 활동 계획: 현장 정보 필수
+      if (!formData.cms_id && !formData.cms_code && !formData.site_name) {
+        setError('현장을 선택해주세요.');
+        return;
+      }
 
-    if (
-      !formData.activity_construction_sales &&
-      !formData.activity_site_additional_sales &&
-      !formData.activity_site_support
-    ) {
-      setError('최소 하나의 활동 구분을 선택해주세요.');
-      return;
+      // 활동 구분 필수
+      if (
+        !formData.activity_construction_sales &&
+        !formData.activity_site_additional_sales &&
+        !formData.activity_site_support
+      ) {
+        setError('최소 하나의 활동 구분을 선택해주세요.');
+        return;
+      }
+    } else {
+      // 목표 금액 계획: 금액 정보 필수
+      // 모든 금액이 0이면 에러
+      if (
+        !formData.target_sales &&
+        !formData.target_order_sales_contribution &&
+        !formData.target_order_profit_contribution &&
+        !formData.target_collection
+      ) {
+        setError('최소 하나의 목표 금액을 입력해주세요.');
+        return;
+      }
     }
 
     setLoading(true);
     try {
-      await onSave(formData);
+      // plan_type 설정 - 수정 모드가 아니면 formType에 따라 설정
+      const dataToSave = {
+        ...formData,
+        plan_type: isEdit ? plan.plan_type : formType as 'activity' | 'target',
+      };
+      await onSave(dataToSave);
     } catch (err: any) {
       setError(err.message || '저장에 실패했습니다.');
     } finally {
@@ -191,9 +213,17 @@ export function WeeklyPlanForm({ user, plan, onClose, onSave, onDelete }: Weekly
         <div className="flex items-center justify-between">
           <div>
             <h1 className="page-title mb-1">
-              {isEdit ? '주간 업무 계획 수정' : '주간 업무 계획 작성'}
+              {formType === 'activity'
+                ? (isEdit ? '목표 활동 계획 수정' : '목표 활동 계획 작성')
+                : (isEdit ? '목표 금액 계획 수정' : '목표 금액 계획 작성')
+              }
             </h1>
-            <p className="page-description">현장과 활동 정보를 입력해주세요.</p>
+            <p className="page-description">
+              {formType === 'activity'
+                ? '현장과 활동 정보를 입력해주세요.'
+                : '목표 금액 정보를 입력해주세요.'
+              }
+            </p>
           </div>
           {/* 삭제 버튼 (수정 모드일 때만) */}
           {isEdit && onDelete && (
@@ -250,66 +280,69 @@ export function WeeklyPlanForm({ user, plan, onClose, onSave, onDelete }: Weekly
           </div>
         </div>
 
-        {/* 현장 검색 */}
-        <div className="card space-y-4">
-          <h3 className="text-lg font-semibold text-white border-b border-gray-border pb-3">
-            현장 정보
-          </h3>
+        {/* 현장 검색 (활동 계획일 때만) */}
+        {formType === 'activity' && (
+          <div className="card space-y-4">
+            <h3 className="text-lg font-semibold text-white border-b border-gray-border pb-3">
+              현장 정보
+            </h3>
 
-          <SiteSearchInput onSelect={handleSiteSelect} disabled={loading} />
+            <SiteSearchInput onSelect={handleSiteSelect} disabled={loading} />
 
-          {/* 선택된 현장 정보 (읽기 전용) */}
-          {(formData.cms_id || formData.cms_code || formData.site_name) && (
-            <div className="bg-gradient-to-br from-primary from-opacity-5 to-bg-darker p-5 rounded-xl border-2 border-primary border-opacity-30 shadow-lg">
-              <div className="flex items-center mb-4">
-                <div className="w-2 h-2 bg-primary rounded-full mr-2 animate-pulse"></div>
-                <span className="text-xs font-semibold text-primary uppercase tracking-wide">선택된 현장</span>
-              </div>
-              <div className="space-y-4">
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div className="bg-bg-card bg-opacity-50 p-3 rounded-lg">
-                    <label className="block text-xs font-medium text-primary mb-1.5">
-                      CMS 코드
-                    </label>
-                    <div className="text-base font-semibold text-white">{formData.cms_code}</div>
-                  </div>
-                  <div className="bg-bg-card bg-opacity-50 p-3 rounded-lg">
-                    <label className="block text-xs font-medium text-primary mb-1.5">
-                      현장명
-                    </label>
-                    <div className="text-base font-semibold text-white">{formData.site_name}</div>
-                  </div>
+            {/* 선택된 현장 정보 (읽기 전용) */}
+            {(formData.cms_id || formData.cms_code || formData.site_name) && (
+              <div className="bg-gradient-to-br from-primary from-opacity-5 to-bg-darker p-5 rounded-xl border-2 border-primary border-opacity-30 shadow-lg">
+                <div className="flex items-center mb-4">
+                  <div className="w-2 h-2 bg-primary rounded-full mr-2 animate-pulse"></div>
+                  <span className="text-xs font-semibold text-primary uppercase tracking-wide">선택된 현장</span>
                 </div>
-                <div className="bg-bg-card bg-opacity-50 p-3 rounded-lg">
-                  <label className="block text-xs font-medium text-primary mb-1.5">
-                    현장 주소
-                  </label>
-                  <div className="text-sm text-white">{formData.site_address}</div>
-                </div>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div className="bg-bg-card bg-opacity-50 p-3 rounded-lg">
-                    <label className="block text-xs font-medium text-primary mb-1.5">
-                      영업 담당
-                    </label>
-                    <div className="text-sm text-white">{formData.sales_manager || '-'}</div>
+                <div className="space-y-4">
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div className="bg-bg-card bg-opacity-50 p-3 rounded-lg">
+                      <label className="block text-xs font-medium text-primary mb-1.5">
+                        CMS 코드
+                      </label>
+                      <div className="text-base font-semibold text-white">{formData.cms_code}</div>
+                    </div>
+                    <div className="bg-bg-card bg-opacity-50 p-3 rounded-lg">
+                      <label className="block text-xs font-medium text-primary mb-1.5">
+                        현장명
+                      </label>
+                      <div className="text-base font-semibold text-white">{formData.site_name}</div>
+                    </div>
                   </div>
                   <div className="bg-bg-card bg-opacity-50 p-3 rounded-lg">
                     <label className="block text-xs font-medium text-primary mb-1.5">
-                      시공 담당
+                      현장 주소
                     </label>
-                    <div className="text-sm text-white">{formData.construction_manager || '-'}</div>
+                    <div className="text-sm text-white">{formData.site_address}</div>
                   </div>
-                </div>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div className="bg-bg-card bg-opacity-50 p-3 rounded-lg">
+                      <label className="block text-xs font-medium text-primary mb-1.5">
+                        영업 담당
+                      </label>
+                      <div className="text-sm text-white">{formData.sales_manager || '-'}</div>
+                    </div>
+                    <div className="bg-bg-card bg-opacity-50 p-3 rounded-lg">
+                      <label className="block text-xs font-medium text-primary mb-1.5">
+                        시공 담당
+                      </label>
+                      <div className="text-sm text-white">{formData.construction_manager || '-'}</div>
+                    </div>
+                  </div>
               </div>
             </div>
           )}
-        </div>
+          </div>
+        )}
 
-        {/* 활동 구분 */}
-        <div className="card space-y-4">
-          <h3 className="text-lg font-semibold text-white border-b border-gray-border pb-3">
-            활동 구분 * (중복 선택 가능)
-          </h3>
+        {/* 활동 구분 (활동 계획일 때만) */}
+        {formType === 'activity' && (
+          <div className="card space-y-4">
+            <h3 className="text-lg font-semibold text-white border-b border-gray-border pb-3">
+              활동 구분 * (중복 선택 가능)
+            </h3>
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
             {/* 건설사 영업 */}
             <label className={`
@@ -419,9 +452,11 @@ export function WeeklyPlanForm({ user, plan, onClose, onSave, onDelete }: Weekly
               </div>
             </label>
           </div>
-        </div>
+          </div>
+        )}
 
-        {/* 목표 금액 설정 */}
+        {/* 목표 금액 설정 (금액 계획일 때만) */}
+        {formType === 'target' && (
         <div className="card space-y-4">
           <h3 className="text-lg font-semibold text-white border-b border-gray-border pb-3">
             목표 금액 설정
@@ -510,6 +545,7 @@ export function WeeklyPlanForm({ user, plan, onClose, onSave, onDelete }: Weekly
             </table>
           </div>
         </div>
+        )}
 
         {/* 액션 버튼 */}
         <div className="card">

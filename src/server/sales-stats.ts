@@ -58,10 +58,12 @@ export async function getSalesStats(year: number, userName: string): Promise<Sal
 
     // 목표 매출 데이터 집계 (weekly_plans 테이블)
     // created_by로 사용자 매칭 (작성자 기준)
+    // plan_type이 'target' 또는 'both'인 레코드만 조회
     const { data: weeklyPlansData, error: weeklyPlansError } = await supabase
       .from('weekly_plans')
       .select('created_at, target_sales')
       .eq('created_by', userName)
+      .in('plan_type', ['target', 'both'])
       .gte('created_at', `${year}-01-01`)
       .lt('created_at', `${year + 1}-01-01`);
 
