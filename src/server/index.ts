@@ -77,7 +77,9 @@ const server = Bun.serve({
         pathname === '/service-worker.js' ||
         pathname === '/icon.svg' ||
         pathname.startsWith('/icon-') ||
-        pathname === '/misung-logo.png') {
+        pathname === '/misung-logo.png' ||
+        pathname === '/favicon-512.png' ||
+        pathname === '/favicon.ico') {
       const file = Bun.file(`public${pathname}`);
       if (await file.exists()) {
         return new Response(file, {
