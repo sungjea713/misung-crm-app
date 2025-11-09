@@ -17,7 +17,11 @@ export default function CostEfficiency({ user }: CostEfficiencyProps) {
   // 필터 상태
   const [year, setYear] = useState(new Date().getFullYear());
   const [selectedUser, setSelectedUser] = useState(user.name);
-  const [users, setUsers] = useState<Array<{ id: string; name: string; department: string }>>([]);
+  const [selectedBranch, setSelectedBranch] = useState<'all' | '본점' | '인천'>('all'); // For multi-branch users filtering their own data
+  const [users, setUsers] = useState<any[]>([]); // Changed to any[] to accommodate expanded structure
+
+  // Check if current user is multi-branch
+  const isMultiBranchUser = user.name === '송기정' || user.name === '김태현';
 
   // 사용자 목록 로드 (관리자만)
   useEffect(() => {
@@ -29,7 +33,7 @@ export default function CostEfficiency({ user }: CostEfficiencyProps) {
   // 통계 데이터 로드
   useEffect(() => {
     fetchStats();
-  }, [year, selectedUser]);
+  }, [year, selectedUser, selectedBranch]);
 
   const fetchUsers = async () => {
     try {
@@ -40,6 +44,11 @@ export default function CostEfficiency({ user }: CostEfficiencyProps) {
       const result = await response.json();
       if (result.success) {
         setUsers(result.data);
+        // Set first user as default if admin and no user selected
+        if (user.role === 'admin' && !selectedUser && result.data.length > 0) {
+          const firstUser = result.data[0];
+          setSelectedUser(firstUser.created_by || firstUser.name);
+        }
       }
     } catch (error) {
       console.error('Error fetching users:', error);
@@ -51,10 +60,32 @@ export default function CostEfficiency({ user }: CostEfficiencyProps) {
     setError('');
     try {
       const token = localStorage.getItem('crm_token');
+
+      // Determine the user_name parameter based on branch selection for multi-branch users
+      let userNameParam = selectedUser;
+      let showAllBranches = false;
+
+      if (user.role !== 'admin' && isMultiBranchUser) {
+        // Multi-branch user filtering their own data by branch
+        if (selectedBranch === 'all') {
+          // For 'all', pass base name and flag to backend to query both branches
+          userNameParam = user.name;
+          showAllBranches = true;
+        } else if (selectedBranch === '인천') {
+          userNameParam = `${user.name}(In)`;
+        } else {
+          userNameParam = user.name;
+        }
+      }
+
       const params = new URLSearchParams({
         year: year.toString(),
-        user_name: selectedUser,
+        user_name: userNameParam,
       });
+
+      if (showAllBranches) {
+        params.append('show_all_branches', 'true');
+      }
 
       const response = await fetch(`/api/cost-efficiency-stats?${params}`, {
         headers: { Authorization: `Bearer ${token}` },
@@ -99,11 +130,27 @@ export default function CostEfficiency({ user }: CostEfficiencyProps) {
                 onChange={(e) => setSelectedUser(e.target.value)}
                 className="input-field"
               >
-                {users.map((u) => (
-                  <option key={u.id} value={u.name}>
-                    {u.name} ({u.department})
+                {users.map((u, index) => (
+                  <option key={`${u.id}-${index}`} value={u.created_by || u.name}>
+                    {u.display_name || `${u.name} (${u.department})`}
                   </option>
                 ))}
+              </select>
+            </div>
+          )}
+
+          {/* 다중 지점 사용자: 지점 선택 */}
+          {user.role !== 'admin' && isMultiBranchUser && (
+            <div className="flex-1 min-w-[150px]">
+              <label className="block text-sm font-medium text-gray-text mb-2">지점</label>
+              <select
+                value={selectedBranch}
+                onChange={(e) => setSelectedBranch(e.target.value as 'all' | '본점' | '인천')}
+                className="input-field"
+              >
+                <option value="all">전체</option>
+                <option value="본점">본점</option>
+                <option value="인천">인천</option>
               </select>
             </div>
           )}

@@ -25,10 +25,14 @@ interface OrderStatsData {
 export default function OrderAchievement({ user }: OrderAchievementProps) {
   const [year, setYear] = useState(new Date().getFullYear());
   const [selectedUser, setSelectedUser] = useState<string>(user.role === 'admin' ? '' : user.name);
-  const [users, setUsers] = useState<User[]>([]);
+  const [selectedBranch, setSelectedBranch] = useState<'all' | '본점' | '인천'>('all'); // For multi-branch users filtering their own data
+  const [users, setUsers] = useState<any[]>([]); // Changed to any[] to accommodate expanded structure
   const [data, setData] = useState<OrderStatsData | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
+
+  // Check if current user is multi-branch
+  const isMultiBranchUser = user.name === '송기정' || user.name === '김태현';
 
   // Fetch users for admin
   useEffect(() => {
@@ -42,7 +46,7 @@ export default function OrderAchievement({ user }: OrderAchievementProps) {
     if (selectedUser) {
       fetchOrderStats();
     }
-  }, [year, selectedUser]);
+  }, [year, selectedUser, selectedBranch]);
 
   const fetchUsers = async () => {
     try {
@@ -62,7 +66,8 @@ export default function OrderAchievement({ user }: OrderAchievementProps) {
         setUsers(result.data);
         // Set first user as default
         if (!selectedUser && result.data.length > 0) {
-          setSelectedUser(result.data[0].name);
+          const firstUser = result.data[0];
+          setSelectedUser(firstUser.created_by || firstUser.name);
         }
       }
     } catch (err) {
@@ -78,10 +83,32 @@ export default function OrderAchievement({ user }: OrderAchievementProps) {
 
     try {
       const token = localStorage.getItem('crm_token');
+
+      // Determine the user_name parameter based on branch selection for multi-branch users
+      let userNameParam = selectedUser;
+      let showAllBranches = false;
+
+      if (user.role !== 'admin' && isMultiBranchUser) {
+        // Multi-branch user filtering their own data by branch
+        if (selectedBranch === 'all') {
+          // For 'all', pass base name and flag to backend to query both branches
+          userNameParam = user.name;
+          showAllBranches = true;
+        } else if (selectedBranch === '인천') {
+          userNameParam = `${user.name}(In)`;
+        } else {
+          userNameParam = user.name;
+        }
+      }
+
       const params = new URLSearchParams({
         year: year.toString(),
-        user_name: selectedUser,
+        user_name: userNameParam,
       });
+
+      if (showAllBranches) {
+        params.append('show_all_branches', 'true');
+      }
 
       const response = await fetch(`/api/order-stats?${params}`, {
         headers: {
@@ -182,7 +209,7 @@ export default function OrderAchievement({ user }: OrderAchievementProps) {
 
       {/* Filters */}
       <div className="card mb-6">
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
           <div>
             <label className="block text-sm font-medium text-gray-text mb-2">년도</label>
             <select
@@ -198,7 +225,7 @@ export default function OrderAchievement({ user }: OrderAchievementProps) {
             </select>
           </div>
 
-          {user.role === 'admin' && (
+          {user.role === 'admin' && users.length > 0 && (
             <div>
               <label className="block text-sm font-medium text-gray-text mb-2">사용자</label>
               <select
@@ -206,11 +233,27 @@ export default function OrderAchievement({ user }: OrderAchievementProps) {
                 onChange={(e) => setSelectedUser(e.target.value)}
                 className="input-field"
               >
-                {users.map((u) => (
-                  <option key={u.id} value={u.name}>
-                    {u.name} ({u.department})
+                {users.map((u, index) => (
+                  <option key={`${u.id}-${index}`} value={u.created_by || u.name}>
+                    {u.display_name || `${u.name} (${u.department})`}
                   </option>
                 ))}
+              </select>
+            </div>
+          )}
+
+          {/* 다중 지점 사용자: 지점 선택 */}
+          {user.role !== 'admin' && isMultiBranchUser && (
+            <div>
+              <label className="block text-sm font-medium text-gray-text mb-2">지점</label>
+              <select
+                value={selectedBranch}
+                onChange={(e) => setSelectedBranch(e.target.value as 'all' | '본점' | '인천')}
+                className="input-field"
+              >
+                <option value="all">전체</option>
+                <option value="본점">본점</option>
+                <option value="인천">인천</option>
               </select>
             </div>
           )}

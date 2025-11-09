@@ -136,6 +136,7 @@ const server = Bun.serve({
 
         const filters = {
           user_id: url.searchParams.get('user_id') || undefined,
+          created_by: url.searchParams.get('created_by') || undefined,
           year: parseInt(url.searchParams.get('year') || new Date().getFullYear().toString()),
           month: parseInt(url.searchParams.get('month') || (new Date().getMonth() + 1).toString()),
           page: parseInt(url.searchParams.get('page') || '1'),
@@ -210,6 +211,7 @@ const server = Bun.serve({
 
         const filters = {
           user_id: url.searchParams.get('user_id') || undefined,
+          created_by: url.searchParams.get('created_by') || undefined,
           year: parseInt(url.searchParams.get('year') || new Date().getFullYear().toString()),
           month: parseInt(url.searchParams.get('month') || (new Date().getMonth() + 1).toString()),
           page: parseInt(url.searchParams.get('page') || '1'),
@@ -284,7 +286,8 @@ const server = Bun.serve({
 
         const year = parseInt(url.searchParams.get('year') || new Date().getFullYear().toString());
         const userId = url.searchParams.get('user_id') || undefined;
-        const result = await getActivityStats(year, userId);
+        const createdBy = url.searchParams.get('created_by') || undefined;
+        const result = await getActivityStats(year, userId, createdBy);
         return Response.json(result, { status: result.success ? 200 : 400 });
       }
 
@@ -297,12 +300,15 @@ const server = Bun.serve({
 
         const year = parseInt(url.searchParams.get('year') || new Date().getFullYear().toString());
         const userName = url.searchParams.get('user_name');
+        const showAllBranches = url.searchParams.get('show_all_branches') === 'true';
 
         if (!userName) {
           return Response.json({ success: false, message: 'user_name parameter is required' }, { status: 400 });
         }
 
-        const result = await getSalesStats(year, userName);
+        console.log('GET /api/sales-stats - Year:', year, 'User:', userName, 'ShowAllBranches:', showAllBranches);
+
+        const result = await getSalesStats(year, userName, showAllBranches);
         return Response.json(result, { status: result.success ? 200 : 400 });
       }
 
@@ -315,14 +321,15 @@ const server = Bun.serve({
 
         const year = parseInt(url.searchParams.get('year') || new Date().getFullYear().toString());
         const userName = url.searchParams.get('user_name');
+        const showAllBranches = url.searchParams.get('show_all_branches') === 'true';
 
         if (!userName) {
           return Response.json({ success: false, message: 'user_name parameter is required' }, { status: 400 });
         }
 
-        console.log('GET /api/order-stats - Year:', year, 'User:', userName);
+        console.log('GET /api/order-stats - Year:', year, 'User:', userName, 'ShowAllBranches:', showAllBranches);
 
-        const result = await getOrderStats(year, userName);
+        const result = await getOrderStats(year, userName, showAllBranches);
         return Response.json(result, { status: result.success ? 200 : 400 });
       }
 
@@ -335,14 +342,15 @@ const server = Bun.serve({
 
         const year = parseInt(url.searchParams.get('year') || new Date().getFullYear().toString());
         const userName = url.searchParams.get('user_name');
+        const showAllBranches = url.searchParams.get('show_all_branches') === 'true';
 
         if (!userName) {
           return Response.json({ success: false, message: 'user_name parameter is required' }, { status: 400 });
         }
 
-        console.log('GET /api/cost-efficiency-stats - Year:', year, 'User:', userName);
+        console.log('GET /api/cost-efficiency-stats - Year:', year, 'User:', userName, 'ShowAllBranches:', showAllBranches);
 
-        const result = await getCostEfficiencyStats(year, userName);
+        const result = await getCostEfficiencyStats(year, userName, showAllBranches);
         return Response.json(result, { status: result.success ? 200 : 400 });
       }
 
@@ -399,6 +407,7 @@ const server = Bun.serve({
 
         const filters = {
           user_id: url.searchParams.get('user_id') || undefined,
+          created_by: url.searchParams.get('created_by') || undefined,
           year: parseInt(url.searchParams.get('year') || new Date().getFullYear().toString()),
           month: parseInt(url.searchParams.get('month') || (new Date().getMonth() + 1).toString()),
           activity_type: url.searchParams.get('activity_type') || undefined,
@@ -445,13 +454,14 @@ const server = Bun.serve({
 
         const user = result.user;
         const body = await req.json();
+        // Remove created_by and updated_by from body - these should be set by the function
+        const { created_by, updated_by, ...bodyWithoutAuditFields } = body;
         const activityData = {
-          ...body,
+          ...bodyWithoutAuditFields,
           user_id: user.id,
-          created_by: user.name,
         };
 
-        const createResult = await createSalesActivity(activityData);
+        const createResult = await createSalesActivity(activityData, user.name);
         return Response.json(createResult, { status: createResult.success ? 201 : 400 });
       }
 
@@ -470,12 +480,10 @@ const server = Bun.serve({
         const user = result.user;
         const id = parseInt(pathname.split('/').pop()!);
         const body = await req.json();
-        const activityData = {
-          ...body,
-          updated_by: user.name,
-        };
+        // Remove created_by and updated_by from body - these should be set by the function
+        const { created_by, updated_by, ...bodyWithoutAuditFields } = body;
 
-        const updateResult = await updateSalesActivity(id, activityData, user.role, user.id);
+        const updateResult = await updateSalesActivity(id, bodyWithoutAuditFields, user.role, user.id, user.name);
         return Response.json(updateResult, { status: updateResult.success ? 200 : 400 });
       }
 

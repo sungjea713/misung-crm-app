@@ -10,10 +10,15 @@ export default function ActivityStatus({ user }: ActivityStatusProps) {
   const [loading, setLoading] = useState(false);
   const [year, setYear] = useState(new Date().getFullYear());
   const [selectedUserId, setSelectedUserId] = useState<string>(user.id);
-  const [users, setUsers] = useState<User[]>([]);
+  const [selectedCreatedBy, setSelectedCreatedBy] = useState<string>(''); // For multi-branch users
+  const [selectedBranch, setSelectedBranch] = useState<'all' | '본점' | '인천'>('all'); // For multi-branch users filtering their own data
+  const [users, setUsers] = useState<any[]>([]); // Changed to any[] to accommodate expanded structure
   const [monthlyData, setMonthlyData] = useState<MonthlyActivityStats[]>([]);
   const [summary, setSummary] = useState<ActivitySummary | null>(null);
   const [error, setError] = useState('');
+
+  // Check if current user is multi-branch
+  const isMultiBranchUser = user.name === '송기정' || user.name === '김태현';
 
   // 사용자 목록 불러오기 (admin만)
   useEffect(() => {
@@ -24,7 +29,7 @@ export default function ActivityStatus({ user }: ActivityStatusProps) {
 
   useEffect(() => {
     fetchActivityStats();
-  }, [year, selectedUserId]);
+  }, [year, selectedUserId, selectedCreatedBy, selectedBranch]);
 
   const fetchUsers = async () => {
     try {
@@ -33,13 +38,15 @@ export default function ActivityStatus({ user }: ActivityStatusProps) {
         headers: { Authorization: `Bearer ${token}` },
       });
       const data = await response.json();
-      console.log('Users fetched:', data);
       if (data.success && data.data) {
         setUsers(data.data);
-        console.log('Users set:', data.data);
-        // 첫 번째 사용자를 기본 선택
-        if (data.data.length > 0 && !selectedUserId) {
-          setSelectedUserId(data.data[0].id);
+        // Set first user as default if admin and no user selected
+        if (user.role === 'admin' && !selectedUserId && !selectedCreatedBy && data.data.length > 0) {
+          const firstUser = data.data[0];
+          setSelectedUserId(firstUser.id);
+          if (firstUser.created_by) {
+            setSelectedCreatedBy(firstUser.created_by);
+          }
         }
       }
     } catch (error) {
@@ -54,13 +61,21 @@ export default function ActivityStatus({ user }: ActivityStatusProps) {
       const token = localStorage.getItem('crm_token');
       const params = new URLSearchParams({ year: year.toString() });
 
-      // admin이면 선택된 사용자, 일반 사용자면 자신의 ID 전달
+      // Admin: use selectedCreatedBy if set, otherwise selectedUserId
+      // Multi-branch user (non-admin): filter by branch selection
+      // Regular user: filter by user_id
       if (user.role === 'admin') {
-        if (selectedUserId) {
+        if (selectedCreatedBy) {
+          params.append('created_by', selectedCreatedBy);
+        } else if (selectedUserId) {
           params.append('user_id', selectedUserId);
         }
+      } else if (isMultiBranchUser && selectedBranch !== 'all') {
+        // Multi-branch user filtering their own data by branch
+        const createdByValue = selectedBranch === '인천' ? `${user.name}(In)` : user.name;
+        params.append('created_by', createdByValue);
       } else {
-        // 일반 사용자는 항상 자신의 데이터만 조회
+        // Regular user or multi-branch user viewing all branches
         params.append('user_id', user.id);
       }
 
@@ -144,25 +159,45 @@ export default function ActivityStatus({ user }: ActivityStatusProps) {
           </div>
 
           {/* 사용자 선택 (admin만) */}
-          {user.role === 'admin' && (
+          {user.role === 'admin' && users.length > 0 && (
             <div className="flex-1 max-w-xs">
               <label className="block text-sm font-medium text-white mb-2">사용자</label>
               <select
-                value={selectedUserId}
-                onChange={(e) => setSelectedUserId(e.target.value)}
+                value={selectedCreatedBy || selectedUserId}
+                onChange={(e) => {
+                  const selectedValue = e.target.value;
+                  const selectedUserData = users.find(u =>
+                    u.created_by ? u.created_by === selectedValue : u.id === selectedValue
+                  );
+
+                  if (selectedUserData) {
+                    setSelectedUserId(selectedUserData.id);
+                    setSelectedCreatedBy(selectedUserData.created_by || '');
+                  }
+                }}
                 className="w-full px-4 py-2 bg-bg-darker text-white border border-gray-border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent transition-colors"
               >
-                {users.length === 0 ? (
-                  <option value="" className="bg-bg-darker text-white">
-                    로딩 중...
+                {users.map((u, index) => (
+                  <option key={`${u.id}-${index}`} value={u.created_by || u.id} className="bg-bg-darker text-white">
+                    {u.display_name || `${u.name} (${u.department})`}
                   </option>
-                ) : (
-                  users.map((u) => (
-                    <option key={u.id} value={u.id} className="bg-bg-darker text-white">
-                      {u.name} ({u.department})
-                    </option>
-                  ))
-                )}
+                ))}
+              </select>
+            </div>
+          )}
+
+          {/* 다중 지점 사용자: 지점 선택 */}
+          {user.role !== 'admin' && isMultiBranchUser && (
+            <div className="w-40">
+              <label className="block text-sm font-medium text-white mb-2">지점</label>
+              <select
+                value={selectedBranch}
+                onChange={(e) => setSelectedBranch(e.target.value as 'all' | '본점' | '인천')}
+                className="w-full px-4 py-2 bg-bg-darker text-white border border-gray-border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent transition-colors"
+              >
+                <option value="all" className="bg-bg-darker text-white">전체</option>
+                <option value="본점" className="bg-bg-darker text-white">본점</option>
+                <option value="인천" className="bg-bg-darker text-white">인천</option>
               </select>
             </div>
           )}

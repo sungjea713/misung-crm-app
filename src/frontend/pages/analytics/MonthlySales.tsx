@@ -21,10 +21,14 @@ export default function MonthlySales({ user }: MonthlySalesProps) {
   const [loading, setLoading] = useState(false);
   const [year, setYear] = useState(new Date().getFullYear());
   const [selectedUserName, setSelectedUserName] = useState<string>(user.name);
-  const [users, setUsers] = useState<User[]>([]);
+  const [selectedBranch, setSelectedBranch] = useState<'all' | '본점' | '인천'>('all'); // For multi-branch users filtering their own data
+  const [users, setUsers] = useState<any[]>([]); // Changed to any[] to accommodate expanded structure
   const [monthlyData, setMonthlyData] = useState<MonthlySalesStats[]>([]);
   const [summary, setSummary] = useState<SalesSummary | null>(null);
   const [error, setError] = useState('');
+
+  // Check if current user is multi-branch
+  const isMultiBranchUser = user.name === '송기정' || user.name === '김태현';
 
   // 사용자 목록 불러오기 (admin만)
   useEffect(() => {
@@ -35,7 +39,7 @@ export default function MonthlySales({ user }: MonthlySalesProps) {
 
   useEffect(() => {
     fetchSalesStats();
-  }, [year, selectedUserName]);
+  }, [year, selectedUserName, selectedBranch]);
 
   const fetchUsers = async () => {
     try {
@@ -46,6 +50,11 @@ export default function MonthlySales({ user }: MonthlySalesProps) {
       const data = await response.json();
       if (data.success && data.data) {
         setUsers(data.data);
+        // Set first user as default if admin and no user selected
+        if (user.role === 'admin' && !selectedUserName && data.data.length > 0) {
+          const firstUser = data.data[0];
+          setSelectedUserName(firstUser.created_by || firstUser.name);
+        }
       }
     } catch (error) {
       console.error('Error fetching users:', error);
@@ -57,10 +66,38 @@ export default function MonthlySales({ user }: MonthlySalesProps) {
     setError('');
     try {
       const token = localStorage.getItem('crm_token');
+
+      // Determine the user_name parameter based on role and branch selection
+      let userNameParam: string;
+      let showAllBranches = false;
+
+      if (user.role === 'admin') {
+        // Admin: use selected user
+        userNameParam = selectedUserName;
+      } else if (isMultiBranchUser) {
+        // Multi-branch user: filter by branch
+        if (selectedBranch === 'all') {
+          // For 'all', pass base name and flag to backend to query both branches
+          userNameParam = user.name;
+          showAllBranches = true;
+        } else if (selectedBranch === '인천') {
+          userNameParam = `${user.name}(In)`;
+        } else {
+          userNameParam = user.name;
+        }
+      } else {
+        // Regular user: use their name
+        userNameParam = user.name;
+      }
+
       const params = new URLSearchParams({
         year: year.toString(),
-        user_name: selectedUserName
+        user_name: userNameParam
       });
+
+      if (showAllBranches) {
+        params.append('show_all_branches', 'true');
+      }
 
       const response = await fetch(`/api/sales-stats?${params.toString()}`, {
         headers: { Authorization: `Bearer ${token}` },
@@ -144,7 +181,7 @@ export default function MonthlySales({ user }: MonthlySalesProps) {
           </div>
 
           {/* 사용자 선택 (admin만) */}
-          {user.role === 'admin' && (
+          {user.role === 'admin' && users.length > 0 && (
             <div className="flex-1 max-w-xs">
               <label className="block text-sm font-medium text-white mb-2">사용자</label>
               <select
@@ -152,17 +189,27 @@ export default function MonthlySales({ user }: MonthlySalesProps) {
                 onChange={(e) => setSelectedUserName(e.target.value)}
                 className="w-full px-4 py-2 bg-bg-darker text-white border border-gray-border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent transition-colors"
               >
-                {users.length === 0 ? (
-                  <option value="" className="bg-bg-darker text-white">
-                    로딩 중...
+                {users.map((u, index) => (
+                  <option key={`${u.id}-${index}`} value={u.created_by || u.name} className="bg-bg-darker text-white">
+                    {u.display_name || `${u.name} (${u.department})`}
                   </option>
-                ) : (
-                  users.map((u) => (
-                    <option key={u.id} value={u.name} className="bg-bg-darker text-white">
-                      {u.name} ({u.department})
-                    </option>
-                  ))
-                )}
+                ))}
+              </select>
+            </div>
+          )}
+
+          {/* 다중 지점 사용자: 지점 선택 */}
+          {user.role !== 'admin' && isMultiBranchUser && (
+            <div className="w-40">
+              <label className="block text-sm font-medium text-white mb-2">지점</label>
+              <select
+                value={selectedBranch}
+                onChange={(e) => setSelectedBranch(e.target.value as 'all' | '본점' | '인천')}
+                className="w-full px-4 py-2 bg-bg-darker text-white border border-gray-border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent transition-colors"
+              >
+                <option value="all" className="bg-bg-darker text-white">전체</option>
+                <option value="본점" className="bg-bg-darker text-white">본점</option>
+                <option value="인천" className="bg-bg-darker text-white">인천</option>
               </select>
             </div>
           )}

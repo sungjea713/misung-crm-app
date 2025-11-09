@@ -54,14 +54,28 @@ interface OrderStatsResponse {
   message?: string;
 }
 
-export async function getOrderStats(year: number, userName: string): Promise<OrderStatsResponse> {
+export async function getOrderStats(year: number, userName: string, showAllBranches: boolean = false): Promise<OrderStatsResponse> {
   try {
-    console.log('⭐⭐⭐ [order-stats] START - Year:', year, 'User:', userName);
+    console.log('⭐⭐⭐ [order-stats] START - Year:', year, 'User:', userName, 'ShowAllBranches:', showAllBranches);
+
+    // Check if this is a multi-branch user
+    const isMultiBranch = userName === '송기정' || userName === '김태현';
+
     // 1. site_summary에서 사용자 매칭하여 cms 코드 추출
-    const { data: siteSummary, error: siteError } = await supabase
+    let siteSummaryQuery = supabase
       .from('site_summary')
-      .select('cms, expected_execution_rate')
-      .ilike('sales_manager', `${userName}%`);
+      .select('cms, expected_execution_rate');
+
+    if (isMultiBranch && showAllBranches) {
+      // Multi-branch user with "all" selected: query both branches
+      const orCondition = `sales_manager.eq."${userName}",sales_manager.eq."${userName}(In)"`;
+      siteSummaryQuery = siteSummaryQuery.or(orCondition);
+    } else {
+      // Regular filtering by exact match
+      siteSummaryQuery = siteSummaryQuery.eq('sales_manager', userName);
+    }
+
+    const { data: siteSummary, error: siteError } = await siteSummaryQuery;
 
     if (siteError) {
       console.error('❌ [order-stats] Error fetching site_summary:', siteError);
@@ -101,15 +115,24 @@ export async function getOrderStats(year: number, userName: string): Promise<Ord
     const profitData = await fetchOrderData(profitCmsList, year);
 
     // 5. weekly_plans에서 목표 수주 데이터 조회
-    // plan_type이 'target' 또는 'both'인 레코드만 조회
     console.log('🔍 [order-stats] Querying weekly_plans for user:', userName, 'year:', year);
-    const { data: weeklyPlansData, error: weeklyPlansError } = await supabase
+    let weeklyPlansQuery = supabase
       .from('weekly_plans')
       .select('created_at, target_order_sales_contribution, target_order_profit_contribution, plan_type, created_by')
-      .eq('created_by', userName)
       .in('plan_type', ['target', 'both'])
       .gte('created_at', `${year}-01-01`)
       .lt('created_at', `${year + 1}-01-01`);
+
+    if (isMultiBranch && showAllBranches) {
+      // Multi-branch user with "all" selected: query both branches
+      const orCondition = `created_by.eq."${userName}",created_by.eq."${userName}(In)"`;
+      weeklyPlansQuery = weeklyPlansQuery.or(orCondition);
+    } else {
+      // Regular filtering by exact match
+      weeklyPlansQuery = weeklyPlansQuery.eq('created_by', userName);
+    }
+
+    const { data: weeklyPlansData, error: weeklyPlansError } = await weeklyPlansQuery;
 
     if (weeklyPlansError) {
       console.error('❌ [order-stats] Error fetching weekly_plans:', weeklyPlansError);

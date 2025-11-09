@@ -26,16 +26,33 @@ interface SalesStatsResponse {
   message?: string;
 }
 
-export async function getSalesStats(year: number, userName: string): Promise<SalesStatsResponse> {
+export async function getSalesStats(year: number, userName: string, showAllBranches: boolean = false): Promise<SalesStatsResponse> {
   try {
+    console.log('📊 [sales-stats] START - Year:', year, 'User:', userName, 'ShowAllBranches:', showAllBranches);
+
+    // Check if this is a multi-branch user
+    const isMultiBranch = userName === '송기정' || userName === '김태현';
+    console.log('🔍 [sales-stats] isMultiBranch:', isMultiBranch);
+
     // 매출 데이터 집계 (inpays 테이블)
-    // ilike 사용하여 "송기정(In)" 같은 형식도 매칭
-    const { data: inpaysData, error: inpaysError } = await supabase
+    let inpaysQuery = supabase
       .from('inpays')
       .select('sales_date, supply_price')
-      .ilike('construction_manager', `${userName}%`)
       .gte('sales_date', `${year}-01-01`)
       .lt('sales_date', `${year + 1}-01-01`);
+
+    if (isMultiBranch && showAllBranches) {
+      // Multi-branch user with "all" selected: query both branches
+      const orCondition = `construction_manager.eq."${userName}",construction_manager.eq."${userName}(In)"`;
+      console.log('✅ [sales-stats] Using OR query for inpays:', orCondition);
+      inpaysQuery = inpaysQuery.or(orCondition);
+    } else {
+      // Regular filtering by exact match
+      console.log('📌 [sales-stats] Using exact match for inpays:', userName);
+      inpaysQuery = inpaysQuery.eq('construction_manager', userName);
+    }
+
+    const { data: inpaysData, error: inpaysError } = await inpaysQuery;
 
     if (inpaysError) {
       console.error('Error fetching inpays:', inpaysError);
@@ -43,13 +60,22 @@ export async function getSalesStats(year: number, userName: string): Promise<Sal
     }
 
     // 매입 데이터 집계 (outpays 테이블)
-    // ilike 사용하여 "송기정(In)" 같은 형식도 매칭
-    const { data: outpaysData, error: outpaysError} = await supabase
+    let outpaysQuery = supabase
       .from('outpays')
       .select('purchase_date, supply_price')
-      .ilike('construction_manager', `${userName}%`)
       .gte('purchase_date', `${year}-01-01`)
       .lt('purchase_date', `${year + 1}-01-01`);
+
+    if (isMultiBranch && showAllBranches) {
+      // Multi-branch user with "all" selected: query both branches
+      const orCondition = `construction_manager.eq."${userName}",construction_manager.eq."${userName}(In)"`;
+      outpaysQuery = outpaysQuery.or(orCondition);
+    } else {
+      // Regular filtering by exact match
+      outpaysQuery = outpaysQuery.eq('construction_manager', userName);
+    }
+
+    const { data: outpaysData, error: outpaysError} = await outpaysQuery;
 
     if (outpaysError) {
       console.error('Error fetching outpays:', outpaysError);
@@ -57,15 +83,30 @@ export async function getSalesStats(year: number, userName: string): Promise<Sal
     }
 
     // 목표 매출 데이터 집계 (weekly_plans 테이블)
-    // created_by로 사용자 매칭 (작성자 기준)
-    // plan_type이 'target' 또는 'both'인 레코드만 조회
-    const { data: weeklyPlansData, error: weeklyPlansError } = await supabase
+    let weeklyPlansQuery = supabase
       .from('weekly_plans')
       .select('created_at, target_sales')
-      .eq('created_by', userName)
       .in('plan_type', ['target', 'both'])
       .gte('created_at', `${year}-01-01`)
       .lt('created_at', `${year + 1}-01-01`);
+
+    if (isMultiBranch && showAllBranches) {
+      // Multi-branch user with "all" selected: query both branches
+      const orCondition = `created_by.eq."${userName}",created_by.eq."${userName}(In)"`;
+      console.log('✅ [sales-stats] Using OR query for weekly_plans:', orCondition);
+      weeklyPlansQuery = weeklyPlansQuery.or(orCondition);
+    } else {
+      // Regular filtering by exact match
+      console.log('📌 [sales-stats] Using exact match for weekly_plans:', userName);
+      weeklyPlansQuery = weeklyPlansQuery.eq('created_by', userName);
+    }
+
+    const { data: weeklyPlansData, error: weeklyPlansError } = await weeklyPlansQuery;
+
+    console.log('📊 [sales-stats] Weekly plans found:', weeklyPlansData?.length || 0);
+    if (weeklyPlansData && weeklyPlansData.length > 0) {
+      console.log('📋 [sales-stats] Weekly plans data:', JSON.stringify(weeklyPlansData, null, 2));
+    }
 
     if (weeklyPlansError) {
       console.error('Error fetching weekly_plans:', weeklyPlansError);

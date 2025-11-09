@@ -88,7 +88,7 @@ interface AllUsersStatsResponse {
   message?: string;
 }
 
-export async function getActivityStats(year: number, userId?: string): Promise<ActivityStatsResponse> {
+export async function getActivityStats(year: number, userId?: string, createdBy?: string): Promise<ActivityStatsResponse> {
   try {
     // 주간 계획 데이터 집계
     // plan_type이 'activity' 또는 'both'인 레코드만 조회
@@ -99,7 +99,11 @@ export async function getActivityStats(year: number, userId?: string): Promise<A
       .gte('created_at', `${year}-01-01`)
       .lt('created_at', `${year + 1}-01-01`);
 
-    if (userId) {
+    // Filter by created_by if provided (for multi-branch users)
+    // Otherwise filter by user_id
+    if (createdBy) {
+      weeklyQuery = weeklyQuery.eq('created_by', createdBy);
+    } else if (userId) {
       weeklyQuery = weeklyQuery.eq('user_id', userId);
     }
 
@@ -117,7 +121,11 @@ export async function getActivityStats(year: number, userId?: string): Promise<A
       .gte('created_at', `${year}-01-01`)
       .lt('created_at', `${year + 1}-01-01`);
 
-    if (userId) {
+    // Filter by created_by if provided (for multi-branch users)
+    // Otherwise filter by user_id
+    if (createdBy) {
+      dailyQuery = dailyQuery.eq('created_by', createdBy);
+    } else if (userId) {
       dailyQuery = dailyQuery.eq('user_id', userId);
     }
 

@@ -34,18 +34,32 @@ function parseAmountString(amountStr: string | null | undefined): number {
 
 export async function getCostEfficiencyStats(
   year: number,
-  userName: string
+  userName: string,
+  showAllBranches: boolean = false
 ): Promise<CostEfficiencyStatsResponse> {
   try {
-    console.log('getCostEfficiencyStats - Year:', year, 'User:', userName);
+    console.log('getCostEfficiencyStats - Year:', year, 'User:', userName, 'ShowAllBranches:', showAllBranches);
+
+    // Check if this is a multi-branch user
+    const isMultiBranch = userName === '송기정' || userName === '김태현';
 
     // 1. inpays 테이블에서 해당 연도의 데이터 조회
-    const { data: inpaysData, error: inpaysError } = await supabase
+    let inpaysQuery = supabase
       .from('inpays')
       .select('sales_date, cms, supply_price')
-      .ilike('construction_manager', `${userName}%`)
       .gte('sales_date', `${year}-01-01`)
       .lt('sales_date', `${year + 1}-01-01`);
+
+    if (isMultiBranch && showAllBranches) {
+      // Multi-branch user with "all" selected: query both branches
+      const orCondition = `construction_manager.eq."${userName}",construction_manager.eq."${userName}(In)"`;
+      inpaysQuery = inpaysQuery.or(orCondition);
+    } else {
+      // Regular filtering by exact match
+      inpaysQuery = inpaysQuery.eq('construction_manager', userName);
+    }
+
+    const { data: inpaysData, error: inpaysError } = await inpaysQuery;
 
     if (inpaysError) {
       console.error('Error fetching inpays:', inpaysError);
