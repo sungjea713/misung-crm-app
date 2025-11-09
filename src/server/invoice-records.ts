@@ -163,14 +163,26 @@ export async function createInvoiceRecord(invoiceData: any, userId: string, user
       }
     }
 
+    // 다중 지점 사용자(송기정, 김태현)의 경우 branch에 따라 이름 suffix 추가
+    let createdByName = userName;
+    if ((userName === '송기정' || userName === '김태현') && invoiceData.branch) {
+      if (invoiceData.branch === '인천') {
+        createdByName = `${userName}(In)`;
+      }
+      // '본점'인 경우는 suffix 없이 그대로 사용
+    }
+
+    // branch 필드는 DB에 저장하지 않음 (created_by에 반영됨)
+    const { branch, ...dataToInsert } = invoiceData;
+
     // site_summary에서 매출/매입 금액 가져오기
     let salesAmount = '0';
     let purchaseAmount = '0';
     let profitDifference = 0;
     let isOverInvested = false;
 
-    if (invoiceData.cms_code) {
-      const summaryResult = await getSiteSummary(invoiceData.cms_code);
+    if (dataToInsert.cms_code) {
+      const summaryResult = await getSiteSummary(dataToInsert.cms_code);
       if (summaryResult.success && summaryResult.data) {
         salesAmount = summaryResult.data.sales_amount || '0';
         purchaseAmount = summaryResult.data.purchase_amount || '0';
@@ -182,14 +194,14 @@ export async function createInvoiceRecord(invoiceData: any, userId: string, user
         isOverInvested = profitDifference < 0;
 
         console.log('Site summary found:', {
-          cms: invoiceData.cms_code,
+          cms: dataToInsert.cms_code,
           salesAmount,
           purchaseAmount,
           profitDifference,
           isOverInvested,
         });
       } else {
-        console.warn('No site summary found for cms:', invoiceData.cms_code);
+        console.warn('No site summary found for cms:', dataToInsert.cms_code);
       }
     }
 
@@ -197,19 +209,19 @@ export async function createInvoiceRecord(invoiceData: any, userId: string, user
       .from('invoice_records')
       .insert({
         user_id: userId,
-        cms_id: invoiceData.cms_id,
-        cms_code: invoiceData.cms_code,
-        site_name: invoiceData.site_name,
-        site_address: invoiceData.site_address,
-        sales_manager: invoiceData.sales_manager,
-        construction_manager: invoiceData.construction_manager,
+        cms_id: dataToInsert.cms_id,
+        cms_code: dataToInsert.cms_code,
+        site_name: dataToInsert.site_name,
+        site_address: dataToInsert.site_address,
+        sales_manager: dataToInsert.sales_manager,
+        construction_manager: dataToInsert.construction_manager,
         sales_amount: salesAmount,
         purchase_amount: purchaseAmount,
         profit_difference: profitDifference,
         is_over_invested: isOverInvested,
-        invoice_date: invoiceData.invoice_date,
-        invoice_amount: invoiceData.invoice_amount,
-        created_by: userName,
+        invoice_date: dataToInsert.invoice_date,
+        invoice_amount: dataToInsert.invoice_amount,
+        created_by: createdByName,
       })
       .select()
       .single();
@@ -275,14 +287,26 @@ export async function updateInvoiceRecord(
       }
     }
 
+    // 다중 지점 사용자(송기정, 김태현)의 경우 branch에 따라 이름 suffix 추가
+    let updatedByName = userName;
+    if ((userName === '송기정' || userName === '김태현') && invoiceData.branch) {
+      if (invoiceData.branch === '인천') {
+        updatedByName = `${userName}(In)`;
+      }
+      // '본점'인 경우는 suffix 없이 그대로 사용
+    }
+
+    // branch 필드는 DB에 저장하지 않음 (updated_by에 반영됨)
+    const { branch, ...dataToUpdate } = invoiceData;
+
     // site_summary에서 매출/매입 금액 가져오기
     let salesAmount = '0';
     let purchaseAmount = '0';
     let profitDifference = 0;
     let isOverInvested = false;
 
-    if (invoiceData.cms_code) {
-      const summaryResult = await getSiteSummary(invoiceData.cms_code);
+    if (dataToUpdate.cms_code) {
+      const summaryResult = await getSiteSummary(dataToUpdate.cms_code);
       if (summaryResult.success && summaryResult.data) {
         salesAmount = summaryResult.data.sales_amount || '0';
         purchaseAmount = summaryResult.data.purchase_amount || '0';
@@ -293,33 +317,33 @@ export async function updateInvoiceRecord(
         isOverInvested = profitDifference < 0;
 
         console.log('Site summary found:', {
-          cms: invoiceData.cms_code,
+          cms: dataToUpdate.cms_code,
           salesAmount,
           purchaseAmount,
           profitDifference,
           isOverInvested,
         });
       } else {
-        console.warn('No site summary found for cms:', invoiceData.cms_code);
+        console.warn('No site summary found for cms:', dataToUpdate.cms_code);
       }
     }
 
     const { data, error } = await supabase
       .from('invoice_records')
       .update({
-        cms_id: invoiceData.cms_id,
-        cms_code: invoiceData.cms_code,
-        site_name: invoiceData.site_name,
-        site_address: invoiceData.site_address,
-        sales_manager: invoiceData.sales_manager,
-        construction_manager: invoiceData.construction_manager,
+        cms_id: dataToUpdate.cms_id,
+        cms_code: dataToUpdate.cms_code,
+        site_name: dataToUpdate.site_name,
+        site_address: dataToUpdate.site_address,
+        sales_manager: dataToUpdate.sales_manager,
+        construction_manager: dataToUpdate.construction_manager,
         sales_amount: salesAmount,
         purchase_amount: purchaseAmount,
         profit_difference: profitDifference,
         is_over_invested: isOverInvested,
-        invoice_date: invoiceData.invoice_date,
-        invoice_amount: invoiceData.invoice_amount,
-        updated_by: userName,
+        invoice_date: dataToUpdate.invoice_date,
+        invoice_amount: dataToUpdate.invoice_amount,
+        updated_by: updatedByName,
       })
       .eq('id', id)
       .select()

@@ -17,8 +17,8 @@ interface SalesActivityData {
   amount?: number;
   execution_rate?: number;
   attachments?: string[];
-  created_by: string;
-  updated_by?: string;
+  // Note: created_by and updated_by should NOT be in this interface
+  // They are set by the create/update functions based on userName parameter
 }
 
 // Reuse construction site search from daily-plans
@@ -55,6 +55,7 @@ export async function getSalesActivities(
   userId: string,
   filters: {
     user_id?: string;
+    created_by?: string;
     year: number;
     month: number;
     activity_type?: string;
@@ -64,7 +65,7 @@ export async function getSalesActivities(
   }
 ) {
   try {
-    const { user_id, year, month, activity_type, site_type, page = 1, limit = 20 } = filters;
+    const { user_id, created_by, year, month, activity_type, site_type, page = 1, limit = 20 } = filters;
 
     // Calculate date range for the month
     const startDate = new Date(year, month - 1, 1);
@@ -79,8 +80,14 @@ export async function getSalesActivities(
       .order('id', { ascending: false });
 
     // Filter by user
-    if (userRole === 'admin' && user_id) {
-      query = query.eq('user_id', user_id);
+    if (userRole === 'admin') {
+      // If created_by is provided, filter by that (for multi-branch users)
+      // Otherwise, filter by user_id
+      if (created_by) {
+        query = query.eq('created_by', created_by);
+      } else if (user_id) {
+        query = query.eq('user_id', user_id);
+      }
     } else if (userRole === 'user') {
       query = query.eq('user_id', userId);
     }
@@ -151,7 +158,7 @@ export async function getSalesActivity(id: number, userRole: string, userId: str
 }
 
 // Create new sales activity
-export async function createSalesActivity(activityData: SalesActivityData) {
+export async function createSalesActivity(activityData: SalesActivityData & { branch?: string }, userName: string) {
   try {
     // If cms_id is provided but invalid, try to find by cms_code
     if (activityData.cms_id) {
@@ -173,9 +180,32 @@ export async function createSalesActivity(activityData: SalesActivityData) {
       }
     }
 
+    // 다중 지점 사용자(송기정, 김태현)의 경우 branch에 따라 이름 suffix 추가
+    let createdByName = userName;
+    console.log('🔍 [createSalesActivity] userName received:', userName);
+    console.log('🔍 [createSalesActivity] branch received:', activityData.branch);
+
+    if ((userName === '송기정' || userName === '김태현') && activityData.branch) {
+      if (activityData.branch === '인천') {
+        createdByName = `${userName}(In)`;
+      }
+      // '본점'인 경우는 suffix 없이 그대로 사용
+    }
+
+    console.log('✅ [createSalesActivity] Final createdByName:', createdByName);
+
+    // branch 필드는 DB에 저장하지 않음 (created_by에 반영됨)
+    const { branch, ...dataToInsert } = activityData;
+
+    console.log('📝 [createSalesActivity] Data to insert keys:', Object.keys(dataToInsert));
+    console.log('📝 [createSalesActivity] created_by in dataToInsert:', 'created_by' in dataToInsert);
+
     const { data, error } = await supabase
       .from('sales_activities')
-      .insert(activityData)
+      .insert({
+        ...dataToInsert,
+        created_by: createdByName,
+      })
       .select('*, users!inner(name, department)')
       .single();
 
@@ -194,9 +224,10 @@ export async function createSalesActivity(activityData: SalesActivityData) {
 // Update sales activity
 export async function updateSalesActivity(
   id: number,
-  activityData: Partial<SalesActivityData>,
+  activityData: Partial<SalesActivityData> & { branch?: string },
   userRole: string,
-  userId: string
+  userId: string,
+  userName: string
 ) {
   try {
     // Check permission and get existing data
@@ -262,9 +293,24 @@ export async function updateSalesActivity(
       }
     }
 
+    // 다중 지점 사용자(송기정, 김태현)의 경우 branch에 따라 이름 suffix 추가
+    let updatedByName = userName;
+    if ((userName === '송기정' || userName === '김태현') && activityData.branch) {
+      if (activityData.branch === '인천') {
+        updatedByName = `${userName}(In)`;
+      }
+      // '본점'인 경우는 suffix 없이 그대로 사용
+    }
+
+    // branch 필드는 DB에 저장하지 않음 (updated_by에 반영됨)
+    const { branch, ...dataToUpdate } = activityData;
+
     const { data, error } = await supabase
       .from('sales_activities')
-      .update(activityData)
+      .update({
+        ...dataToUpdate,
+        updated_by: updatedByName,
+      })
       .eq('id', id)
       .select('*, users!inner(name, department)')
       .single();
@@ -329,7 +375,38 @@ export async function getAllUsers() {
       return { success: false, message: '사용자 목록을 불러오지 못했습니다.' };
     }
 
-    return { success: true, data };
+    // Expand multi-branch users (송기정, 김태현) into separate entries
+    const expandedData = [];
+    for (const user of data) {
+      if (user.name === '송기정' || user.name === '김태현') {
+        // Add entry for headquarters (본점)
+        expandedData.push({
+          id: user.id,
+          name: user.name,
+          department: user.department,
+          created_by: user.name, // Filter value for 본점
+          display_name: `${user.name} (${user.department})` // Display text
+        });
+        // Add entry for Incheon branch (인천)
+        expandedData.push({
+          id: user.id,
+          name: `${user.name}(In)`,
+          department: user.department,
+          created_by: `${user.name}(In)`, // Filter value for 인천
+          display_name: `${user.name}(In) (${user.department})` // Display text
+        });
+      } else {
+        expandedData.push({
+          id: user.id,
+          name: user.name,
+          department: user.department,
+          created_by: undefined, // Regular users don't need created_by filter
+          display_name: `${user.name} (${user.department})`
+        });
+      }
+    }
+
+    return { success: true, data: expandedData };
   } catch (error: any) {
     console.error('Error in getAllUsers:', error);
     return { success: false, message: error.message || '사용자 목록을 불러오지 못했습니다.' };

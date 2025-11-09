@@ -8,6 +8,7 @@ export interface User {
   position: string;
   phone?: string;
   role: 'admin' | 'user';
+  branch?: '본점' | '인천';  // Only for multi-branch users (송기정, 김태현)
   is_initial_password: boolean;
   auto_login: boolean;
   created_at: string;

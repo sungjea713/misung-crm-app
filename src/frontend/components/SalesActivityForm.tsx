@@ -19,6 +19,20 @@ export function SalesActivityForm({ user, activity, onClose, onSave, onDelete }:
   const [error, setError] = useState('');
   const [originalAttachments, setOriginalAttachments] = useState<string[]>([]);
 
+  // Check if user is multi-branch (송기정 or 김태현)
+  const isMultiBranchUser = user.name === '송기정' || user.name === '김태현';
+
+  // 초기 지점 설정: 수정 모드일 경우 created_by에서 판단, 아니면 user.branch 또는 기본값 '인천'
+  const getInitialBranch = (): '본점' | '인천' => {
+    if (activity && isMultiBranchUser) {
+      // created_by에 (In) suffix가 있으면 인천, 없으면 본점
+      return activity.created_by?.includes('(In)') ? '인천' : '본점';
+    }
+    return user.branch || '인천';
+  };
+
+  const [selectedBranch, setSelectedBranch] = useState<'본점' | '인천'>(getInitialBranch());
+
   // Get today's date in YYYY-MM-DD format
   const getTodayDate = () => {
     const today = new Date();
@@ -64,6 +78,11 @@ export function SalesActivityForm({ user, activity, onClose, onSave, onDelete }:
         execution_rate: activity.execution_rate,
         attachments: activity.attachments || [],
       });
+
+      // Update selected branch based on created_by suffix
+      if (isMultiBranchUser) {
+        setSelectedBranch(activity.created_by?.includes('(In)') ? '인천' : '본점');
+      }
     } else {
       // Reset form for new entry
       setFormData({
@@ -81,8 +100,13 @@ export function SalesActivityForm({ user, activity, onClose, onSave, onDelete }:
         execution_rate: undefined,
         attachments: [],
       });
+
+      // Reset branch to default for new entry
+      if (isMultiBranchUser) {
+        setSelectedBranch(user.branch || '인천');
+      }
     }
-  }, [activity]);
+  }, [activity, isMultiBranchUser, user.branch]);
 
   const handleSiteSelect = (site: ConstructionSite) => {
     setFormData({
@@ -265,7 +289,14 @@ export function SalesActivityForm({ user, activity, onClose, onSave, onDelete }:
     setLoading(true);
 
     try {
-      await onSave(formData);
+      const dataToSave: any = { ...formData };
+
+      // 다중 지점 사용자인 경우 branch 정보 추가
+      if (isMultiBranchUser) {
+        dataToSave.branch = selectedBranch;
+      }
+
+      await onSave(dataToSave);
       onClose();
     } catch (err: any) {
       setError(err.message || '저장 중 오류가 발생했습니다.');
@@ -351,6 +382,47 @@ export function SalesActivityForm({ user, activity, onClose, onSave, onDelete }:
               required
             />
           </div>
+
+          {/* 지점 구분 (송기정, 김태현만 표시) */}
+          {isMultiBranchUser && (
+            <div>
+              <label className="block text-sm font-medium text-gray-text mb-2">
+                지점 구분 *
+              </label>
+              <div className="grid grid-cols-2 gap-3">
+                <button
+                  type="button"
+                  onClick={() => setSelectedBranch('본점')}
+                  disabled={loading}
+                  className={`
+                    p-3 rounded-lg border-2 transition-all font-medium
+                    ${selectedBranch === '본점'
+                      ? 'bg-primary bg-opacity-10 border-primary text-primary'
+                      : 'bg-bg-darker border-gray-border text-white hover:border-primary hover:border-opacity-50'
+                    }
+                    ${loading ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer'}
+                  `}
+                >
+                  본점
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setSelectedBranch('인천')}
+                  disabled={loading}
+                  className={`
+                    p-3 rounded-lg border-2 transition-all font-medium
+                    ${selectedBranch === '인천'
+                      ? 'bg-primary bg-opacity-10 border-primary text-primary'
+                      : 'bg-bg-darker border-gray-border text-white hover:border-primary hover:border-opacity-50'
+                    }
+                    ${loading ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer'}
+                  `}
+                >
+                  인천
+                </button>
+              </div>
+            </div>
+          )}
 
           {/* Activity Type (견적/계약) */}
           <div>

@@ -17,6 +17,8 @@ export default function DailyPlanPage({ user }: DailyPlanPageProps) {
 
   // 필터 상태
   const [selectedUser, setSelectedUser] = useState<string>(user.id);
+  const [selectedCreatedBy, setSelectedCreatedBy] = useState<string>(''); // For multi-branch users
+  const [selectedBranch, setSelectedBranch] = useState<'all' | '본점' | '인천'>('all'); // For multi-branch users filtering their own data
   const [year, setYear] = useState(new Date().getFullYear());
   const [month, setMonth] = useState(new Date().getMonth() + 1);
   const [page, setPage] = useState(1);
@@ -27,8 +29,11 @@ export default function DailyPlanPage({ user }: DailyPlanPageProps) {
     totalPages: 0,
   });
 
+  // Check if current user is multi-branch
+  const isMultiBranchUser = user.name === '송기정' || user.name === '김태현';
+
   // 관리자인 경우 사용자 목록
-  const [users, setUsers] = useState<Array<{ id: string; name: string; department: string }>>([]);
+  const [users, setUsers] = useState<any[]>([]); // Changed to any[] to accommodate expanded structure
 
   // 사용자 목록 로드 (관리자만)
   useEffect(() => {
@@ -40,7 +45,7 @@ export default function DailyPlanPage({ user }: DailyPlanPageProps) {
   // 일일 일지 목록 로드
   useEffect(() => {
     fetchPlans();
-  }, [selectedUser, year, month, page]);
+  }, [selectedUser, selectedCreatedBy, selectedBranch, year, month, page]);
 
   const fetchUsers = async () => {
     try {
@@ -51,6 +56,14 @@ export default function DailyPlanPage({ user }: DailyPlanPageProps) {
       const data = await response.json();
       if (data.success) {
         setUsers(data.data);
+        // Set first user as default if admin and no user selected
+        if (user.role === 'admin' && !selectedUser && !selectedCreatedBy && data.data.length > 0) {
+          const firstUser = data.data[0];
+          setSelectedUser(firstUser.id);
+          if (firstUser.created_by) {
+            setSelectedCreatedBy(firstUser.created_by);
+          }
+        }
       }
     } catch (error) {
       console.error('Error fetching users:', error);
@@ -63,12 +76,29 @@ export default function DailyPlanPage({ user }: DailyPlanPageProps) {
     try {
       const token = localStorage.getItem('crm_token');
       const params = new URLSearchParams({
-        user_id: selectedUser,
         year: year.toString(),
         month: month.toString(),
         page: page.toString(),
         limit: '20',
       });
+
+      // Admin: use selectedCreatedBy if set, otherwise selectedUser
+      // Multi-branch user (non-admin): filter by branch selection
+      // Regular user: filter by user_id
+      if (user.role === 'admin') {
+        if (selectedCreatedBy) {
+          params.append('created_by', selectedCreatedBy);
+        } else if (selectedUser) {
+          params.append('user_id', selectedUser);
+        }
+      } else if (isMultiBranchUser && selectedBranch !== 'all') {
+        // Multi-branch user filtering their own data by branch
+        const createdByValue = selectedBranch === '인천' ? `${user.name}(In)` : user.name;
+        params.append('created_by', createdByValue);
+      } else {
+        // Regular user or multi-branch user viewing all branches
+        params.append('user_id', user.id);
+      }
 
       const response = await fetch(`/api/daily-plans?${params}`, {
         headers: { Authorization: `Bearer ${token}` },
@@ -177,18 +207,45 @@ export default function DailyPlanPage({ user }: DailyPlanPageProps) {
                 <div className="flex-1 min-w-[200px]">
                   <label className="block text-sm font-medium text-white mb-2">사용자</label>
                   <select
-                    value={selectedUser}
+                    value={selectedCreatedBy || selectedUser}
                     onChange={(e) => {
-                      setSelectedUser(e.target.value);
+                      const selectedValue = e.target.value;
+                      const selectedUserData = users.find(u =>
+                        u.created_by ? u.created_by === selectedValue : u.id === selectedValue
+                      );
+
+                      if (selectedUserData) {
+                        setSelectedUser(selectedUserData.id);
+                        setSelectedCreatedBy(selectedUserData.created_by || '');
+                      }
                       setPage(1);
                     }}
                     className="w-full px-4 py-2 bg-bg-darker text-white border border-gray-border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent transition-colors"
                   >
-                    {users.map((u) => (
-                      <option key={u.id} value={u.id} className="bg-bg-darker text-white">
-                        {u.name} ({u.department})
+                    {users.map((u, index) => (
+                      <option key={`${u.id}-${index}`} value={u.created_by || u.id} className="bg-bg-darker text-white">
+                        {u.display_name || `${u.name} (${u.department})`}
                       </option>
                     ))}
+                  </select>
+                </div>
+              )}
+
+              {/* 다중 지점 사용자: 지점 선택 */}
+              {user.role !== 'admin' && isMultiBranchUser && (
+                <div className="w-40">
+                  <label className="block text-sm font-medium text-white mb-2">지점</label>
+                  <select
+                    value={selectedBranch}
+                    onChange={(e) => {
+                      setSelectedBranch(e.target.value as 'all' | '본점' | '인천');
+                      setPage(1);
+                    }}
+                    className="w-full px-4 py-2 bg-bg-darker text-white border border-gray-border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent transition-colors"
+                  >
+                    <option value="all" className="bg-bg-darker text-white">전체</option>
+                    <option value="본점" className="bg-bg-darker text-white">본점</option>
+                    <option value="인천" className="bg-bg-darker text-white">인천</option>
                   </select>
                 </div>
               )}

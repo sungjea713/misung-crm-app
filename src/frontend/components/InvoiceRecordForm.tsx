@@ -17,6 +17,20 @@ export function InvoiceRecordForm({ user, record, onClose, onSave, onDelete }: I
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [error, setError] = useState('');
 
+  // Check if user is multi-branch (송기정 or 김태현)
+  const isMultiBranchUser = user.name === '송기정' || user.name === '김태현';
+
+  // 초기 지점 설정: 수정 모드일 경우 created_by에서 판단, 아니면 user.branch 또는 기본값 '인천'
+  const getInitialBranch = (): '본점' | '인천' => {
+    if (record && isMultiBranchUser) {
+      // created_by에 (In) suffix가 있으면 인천, 없으면 본점
+      return record.created_by?.includes('(In)') ? '인천' : '본점';
+    }
+    return user.branch || '인천';
+  };
+
+  const [selectedBranch, setSelectedBranch] = useState<'본점' | '인천'>(getInitialBranch());
+
   // 매출/매입 자동 계산 필드
   const [salesAmount, setSalesAmount] = useState<string>('');
   const [purchaseAmount, setPurchaseAmount] = useState<string>('');
@@ -57,6 +71,11 @@ export function InvoiceRecordForm({ user, record, onClose, onSave, onDelete }: I
       setPurchaseAmount(record.purchase_amount || '0');
       setProfitDifference(record.profit_difference || 0);
       setIsOverInvested(record.is_over_invested || false);
+
+      // Update selected branch based on created_by suffix
+      if (isMultiBranchUser) {
+        setSelectedBranch(record.created_by?.includes('(In)') ? '인천' : '본점');
+      }
     } else {
       // Reset form for new entry
       setFormData({
@@ -73,8 +92,13 @@ export function InvoiceRecordForm({ user, record, onClose, onSave, onDelete }: I
       setPurchaseAmount('');
       setProfitDifference(0);
       setIsOverInvested(false);
+
+      // Reset branch to default for new entry
+      if (isMultiBranchUser) {
+        setSelectedBranch(user.branch || '인천');
+      }
     }
-  }, [record]);
+  }, [record, isMultiBranchUser, user.branch]);
 
   // 현장 선택 시 site_summary에서 매출/매입 금액 가져오기
   const handleSiteSelect = async (site: ConstructionSite) => {
@@ -179,7 +203,14 @@ export function InvoiceRecordForm({ user, record, onClose, onSave, onDelete }: I
     setLoading(true);
 
     try {
-      await onSave(formData);
+      const dataToSave: any = { ...formData };
+
+      // 다중 지점 사용자인 경우 branch 정보 추가
+      if (isMultiBranchUser) {
+        dataToSave.branch = selectedBranch;
+      }
+
+      await onSave(dataToSave);
       onClose();
     } catch (err: any) {
       setError(err.message || '저장 중 오류가 발생했습니다.');
@@ -240,6 +271,47 @@ export function InvoiceRecordForm({ user, record, onClose, onSave, onDelete }: I
             <input type="text" value={user.department} className="input-field" readOnly />
           </div>
         </div>
+
+        {/* 지점 구분 (송기정, 김태현만 표시) */}
+        {isMultiBranchUser && (
+          <div>
+            <label className="block text-sm font-medium text-gray-text mb-2">
+              지점 구분 *
+            </label>
+            <div className="grid grid-cols-2 gap-3">
+              <button
+                type="button"
+                onClick={() => setSelectedBranch('본점')}
+                disabled={loading}
+                className={`
+                  p-3 rounded-lg border-2 transition-all font-medium
+                  ${selectedBranch === '본점'
+                    ? 'bg-primary bg-opacity-10 border-primary text-primary'
+                    : 'bg-bg-darker border-gray-border text-white hover:border-primary hover:border-opacity-50'
+                  }
+                  ${loading ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer'}
+                `}
+              >
+                본점
+              </button>
+              <button
+                type="button"
+                onClick={() => setSelectedBranch('인천')}
+                disabled={loading}
+                className={`
+                  p-3 rounded-lg border-2 transition-all font-medium
+                  ${selectedBranch === '인천'
+                    ? 'bg-primary bg-opacity-10 border-primary text-primary'
+                    : 'bg-bg-darker border-gray-border text-white hover:border-primary hover:border-opacity-50'
+                  }
+                  ${loading ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer'}
+                `}
+              >
+                인천
+              </button>
+            </div>
+          </div>
+        )}
 
         {/* 계산서 발행일 */}
         <div>

@@ -15,15 +15,20 @@ export default function SalesActivity({ user }: SalesActivityProps) {
 
   // Filters
   const [selectedUser, setSelectedUser] = useState<string>(user.role === 'admin' ? '' : user.id);
+  const [selectedCreatedBy, setSelectedCreatedBy] = useState<string>(''); // For multi-branch users
+  const [selectedBranch, setSelectedBranch] = useState<'all' | '본점' | '인천'>('all'); // For multi-branch users filtering their own data
   const [year, setYear] = useState(new Date().getFullYear());
   const [month, setMonth] = useState(new Date().getMonth() + 1);
   const [activityType, setActivityType] = useState<string>('all');
   const [siteType, setSiteType] = useState<string>('all');
   const [page, setPage] = useState(1);
 
+  // Check if current user is multi-branch
+  const isMultiBranchUser = user.name === '송기정' || user.name === '김태현';
+
   // Data
   const [activities, setActivities] = useState<SalesActivity[]>([]);
-  const [users, setUsers] = useState<User[]>([]);
+  const [users, setUsers] = useState<any[]>([]); // Changed from User[] to any[] to accommodate expanded structure
   const [pagination, setPagination] = useState({
     total: 0,
     page: 1,
@@ -47,12 +52,12 @@ export default function SalesActivity({ user }: SalesActivityProps) {
   useEffect(() => {
     if (viewMode === 'list') {
       // Admin: wait until selectedUser is set before fetching
-      if (user.role === 'admin' && !selectedUser) {
+      if (user.role === 'admin' && !selectedUser && !selectedCreatedBy) {
         return;
       }
       fetchActivities();
     }
-  }, [selectedUser, year, month, activityType, siteType, page, viewMode]);
+  }, [selectedUser, selectedCreatedBy, selectedBranch, year, month, activityType, siteType, page, viewMode]);
 
   const fetchUsers = async () => {
     try {
@@ -77,8 +82,12 @@ export default function SalesActivity({ user }: SalesActivityProps) {
         setUsers(result.data);
         console.log('Users set:', result.data);
         // Set first user as default if admin and no user selected
-        if (user.role === 'admin' && !selectedUser && result.data.length > 0) {
-          setSelectedUser(result.data[0].id);
+        if (user.role === 'admin' && !selectedUser && !selectedCreatedBy && result.data.length > 0) {
+          const firstUser = result.data[0];
+          setSelectedUser(firstUser.id);
+          if (firstUser.created_by) {
+            setSelectedCreatedBy(firstUser.created_by);
+          }
         }
       }
     } catch (err) {
@@ -99,12 +108,21 @@ export default function SalesActivity({ user }: SalesActivityProps) {
         limit: '20',
       });
 
-      // Admin: filter by selected user, User: only show own activities
+      // Admin: use selectedCreatedBy if set, otherwise selectedUser
+      // Multi-branch user (non-admin): filter by branch selection
+      // Regular user: filter by user_id
       if (user.role === 'admin') {
-        if (selectedUser) {
+        if (selectedCreatedBy) {
+          params.append('created_by', selectedCreatedBy);
+        } else if (selectedUser) {
           params.append('user_id', selectedUser);
         }
+      } else if (isMultiBranchUser && selectedBranch !== 'all') {
+        // Multi-branch user filtering their own data by branch
+        const createdByValue = selectedBranch === '인천' ? `${user.name}(In)` : user.name;
+        params.append('created_by', createdByValue);
       } else {
+        // Regular user or multi-branch user viewing all branches
         params.append('user_id', user.id);
       }
 
@@ -331,18 +349,45 @@ export default function SalesActivity({ user }: SalesActivityProps) {
             <div>
               <label className="block text-sm font-medium text-gray-text mb-2">사용자</label>
               <select
-                value={selectedUser}
+                value={selectedCreatedBy || selectedUser}
                 onChange={(e) => {
-                  setSelectedUser(e.target.value);
+                  const selectedValue = e.target.value;
+                  const selectedUserData = users.find(u =>
+                    u.created_by ? u.created_by === selectedValue : u.id === selectedValue
+                  );
+
+                  if (selectedUserData) {
+                    setSelectedUser(selectedUserData.id);
+                    setSelectedCreatedBy(selectedUserData.created_by || '');
+                  }
                   setPage(1);
                 }}
                 className="input-field"
               >
-                {users.map((u) => (
-                  <option key={u.id} value={u.id}>
-                    {u.name} ({u.department})
+                {users.map((u, index) => (
+                  <option key={`${u.id}-${index}`} value={u.created_by || u.id}>
+                    {u.display_name || `${u.name} (${u.department})`}
                   </option>
                 ))}
+              </select>
+            </div>
+          )}
+
+          {/* Branch (Multi-branch users only) */}
+          {user.role !== 'admin' && isMultiBranchUser && (
+            <div>
+              <label className="block text-sm font-medium text-gray-text mb-2">지점</label>
+              <select
+                value={selectedBranch}
+                onChange={(e) => {
+                  setSelectedBranch(e.target.value as 'all' | '본점' | '인천');
+                  setPage(1);
+                }}
+                className="input-field"
+              >
+                <option value="all">전체</option>
+                <option value="본점">본점</option>
+                <option value="인천">인천</option>
               </select>
             </div>
           )}

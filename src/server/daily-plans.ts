@@ -33,13 +33,14 @@ export async function searchConstructionSites(query: string) {
 // 일일 일지 목록 조회
 export async function getDailyPlans(filters: {
   user_id?: string;
+  created_by?: string;
   year: number;
   month: number;
   page?: number;
   limit?: number;
 }) {
   try {
-    const { user_id, year, month, page = 1, limit = 20 } = filters;
+    const { user_id, created_by, year, month, page = 1, limit = 20 } = filters;
     const offset = (page - 1) * limit;
 
     // 날짜 범위 계산
@@ -54,7 +55,11 @@ export async function getDailyPlans(filters: {
       .order('created_at', { ascending: false })
       .range(offset, offset + limit - 1);
 
-    if (user_id) {
+    // If created_by is provided, filter by that (for multi-branch users)
+    // Otherwise, filter by user_id
+    if (created_by) {
+      query = query.eq('created_by', created_by);
+    } else if (user_id) {
       query = query.eq('user_id', user_id);
     }
 
@@ -130,12 +135,24 @@ export async function createDailyPlan(planData: any, userId: string, userName: s
       }
     }
 
+    // 다중 지점 사용자(송기정, 김태현)의 경우 branch에 따라 이름 suffix 추가
+    let createdByName = userName;
+    if ((userName === '송기정' || userName === '김태현') && planData.branch) {
+      if (planData.branch === '인천') {
+        createdByName = `${userName}(In)`;
+      }
+      // '본점'인 경우는 suffix 없이 그대로 사용
+    }
+
+    // branch 필드는 DB에 저장하지 않음 (created_by에 반영됨)
+    const { branch, ...dataToInsert } = planData;
+
     const { data, error } = await supabase
       .from('daily_plans')
       .insert({
         user_id: userId,
-        ...planData,
-        created_by: userName,
+        ...dataToInsert,
+        created_by: createdByName,
       })
       .select()
       .single();
@@ -203,11 +220,23 @@ export async function updateDailyPlan(
       }
     }
 
+    // 다중 지점 사용자(송기정, 김태현)의 경우 branch에 따라 이름 suffix 추가
+    let updatedByName = userName;
+    if ((userName === '송기정' || userName === '김태현') && planData.branch) {
+      if (planData.branch === '인천') {
+        updatedByName = `${userName}(In)`;
+      }
+      // '본점'인 경우는 suffix 없이 그대로 사용
+    }
+
+    // branch 필드는 DB에 저장하지 않음 (updated_by에 반영됨)
+    const { branch, ...dataToUpdate } = planData;
+
     const { data, error } = await supabase
       .from('daily_plans')
       .update({
-        ...planData,
-        updated_by: userName,
+        ...dataToUpdate,
+        updated_by: updatedByName,
       })
       .eq('id', id)
       .select()
@@ -260,7 +289,41 @@ export async function getAllUsers() {
 
     if (error) throw error;
 
-    return { success: true, data };
+    // Expand multi-branch users (송기정, 김태현) into separate entries
+    const expandedData = [];
+    for (const user of data) {
+      if (user.name === '송기정' || user.name === '김태현') {
+        // Add entry for headquarters (본점)
+        expandedData.push({
+          id: user.id,
+          name: user.name,
+          department: user.department,
+          email: user.email,
+          created_by: user.name, // Filter value for 본점
+          display_name: `${user.name} (${user.department})` // Display text
+        });
+        // Add entry for Incheon branch (인천)
+        expandedData.push({
+          id: user.id,
+          name: `${user.name}(In)`,
+          department: user.department,
+          email: user.email,
+          created_by: `${user.name}(In)`, // Filter value for 인천
+          display_name: `${user.name}(In) (${user.department})` // Display text
+        });
+      } else {
+        expandedData.push({
+          id: user.id,
+          name: user.name,
+          department: user.department,
+          email: user.email,
+          created_by: undefined, // Regular users don't need created_by filter
+          display_name: `${user.name} (${user.department})`
+        });
+      }
+    }
+
+    return { success: true, data: expandedData };
   } catch (error: any) {
     console.error('Error fetching users:', error);
     return { success: false, message: error.message };

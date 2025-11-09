@@ -17,6 +17,20 @@ export function DailyPlanForm({ user, plan, onClose, onSave, onDelete }: DailyPl
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [error, setError] = useState('');
 
+  // Check if user is multi-branch (송기정 or 김태현)
+  const isMultiBranchUser = user.name === '송기정' || user.name === '김태현';
+
+  // 초기 지점 설정: 수정 모드일 경우 created_by에서 판단, 아니면 user.branch 또는 기본값 '인천'
+  const getInitialBranch = (): '본점' | '인천' => {
+    if (plan && isMultiBranchUser) {
+      // created_by에 (In) suffix가 있으면 인천, 없으면 본점
+      return plan.created_by?.includes('(In)') ? '인천' : '본점';
+    }
+    return user.branch || '인천';
+  };
+
+  const [selectedBranch, setSelectedBranch] = useState<'본점' | '인천'>(getInitialBranch());
+
   const [formData, setFormData] = useState<DailyPlanFormData>({
     cms_id: plan?.cms_id,
     cms_code: plan?.cms_code || '',
@@ -43,6 +57,11 @@ export function DailyPlanForm({ user, plan, onClose, onSave, onDelete }: DailyPl
         activity_site_additional_sales: plan.activity_site_additional_sales || false,
         activity_site_support: plan.activity_site_support || false,
       });
+
+      // Update selected branch based on created_by suffix
+      if (isMultiBranchUser) {
+        setSelectedBranch(plan.created_by?.includes('(In)') ? '인천' : '본점');
+      }
     } else {
       // Reset form for new entry
       setFormData({
@@ -56,8 +75,13 @@ export function DailyPlanForm({ user, plan, onClose, onSave, onDelete }: DailyPl
         activity_site_additional_sales: false,
         activity_site_support: false,
       });
+
+      // Reset branch to default for new entry
+      if (isMultiBranchUser) {
+        setSelectedBranch(user.branch || '인천');
+      }
     }
-  }, [plan]);
+  }, [plan, isMultiBranchUser, user.branch]);
 
   const handleSiteSelect = (site: ConstructionSite) => {
     setFormData({
@@ -100,7 +124,14 @@ export function DailyPlanForm({ user, plan, onClose, onSave, onDelete }: DailyPl
 
     setLoading(true);
     try {
-      await onSave(formData);
+      const dataToSave: any = { ...formData };
+
+      // 다중 지점 사용자인 경우 branch 정보 추가
+      if (isMultiBranchUser) {
+        dataToSave.branch = selectedBranch;
+      }
+
+      await onSave(dataToSave);
     } catch (err: any) {
       setError(err.message || '저장에 실패했습니다.');
     } finally {
@@ -201,6 +232,47 @@ export function DailyPlanForm({ user, plan, onClose, onSave, onDelete }: DailyPl
               />
             </div>
           </div>
+
+          {/* 지점 구분 (송기정, 김태현만 표시) */}
+          {isMultiBranchUser && (
+            <div>
+              <label className="block text-sm font-medium text-gray-text mb-2">
+                지점 구분 *
+              </label>
+              <div className="grid grid-cols-2 gap-3">
+                <button
+                  type="button"
+                  onClick={() => setSelectedBranch('본점')}
+                  disabled={loading}
+                  className={`
+                    p-3 rounded-lg border-2 transition-all font-medium
+                    ${selectedBranch === '본점'
+                      ? 'bg-primary bg-opacity-10 border-primary text-primary'
+                      : 'bg-bg-darker border-gray-border text-white hover:border-primary hover:border-opacity-50'
+                    }
+                    ${loading ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer'}
+                  `}
+                >
+                  본점
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setSelectedBranch('인천')}
+                  disabled={loading}
+                  className={`
+                    p-3 rounded-lg border-2 transition-all font-medium
+                    ${selectedBranch === '인천'
+                      ? 'bg-primary bg-opacity-10 border-primary text-primary'
+                      : 'bg-bg-darker border-gray-border text-white hover:border-primary hover:border-opacity-50'
+                    }
+                    ${loading ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer'}
+                  `}
+                >
+                  인천
+                </button>
+              </div>
+            </div>
+          )}
         </div>
 
         {/* 현장 검색 */}
