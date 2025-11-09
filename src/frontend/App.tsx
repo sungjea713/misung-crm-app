@@ -8,7 +8,7 @@ import WeeklyPlan from './pages/performance/WeeklyPlan';
 import DailyPlan from './pages/performance/DailyPlan';
 import SalesActivity from './pages/performance/SalesActivity';
 import Invoice from './pages/performance/Invoice';
-import Collection from './pages/performance/Collection';
+import CollectionManagement from './pages/performance/CollectionManagement';
 import MonthlySales from './pages/analytics/MonthlySales';
 import OrderAchievement from './pages/analytics/OrderAchievement';
 import CollectionStatus from './pages/analytics/CollectionStatus';
@@ -17,6 +17,7 @@ import ActivityStatus from './pages/analytics/ActivityStatus';
 import ConfirmedCollection from './pages/admin/ConfirmedCollection';
 import OutstandingBalance from './pages/admin/OutstandingBalance';
 import MonthlyOverInvestment from './pages/analytics/MonthlyOverInvestment';
+import MonthlyCollection from './pages/admin/MonthlyCollection';
 import type { User, LoginCredentials, ChangePasswordData } from './types';
 
 export default function App() {
@@ -157,19 +158,21 @@ export default function App() {
       case '/performance/invoice':
         return <Invoice user={user} />;
       case '/performance/collection':
-        return <Collection />;
+        return <CollectionManagement user={user} />;
       case '/analytics/monthly-sales':
         return <MonthlySales user={user} />;
       case '/analytics/order-achievement':
         return <OrderAchievement user={user} />;
       case '/analytics/collection-status':
-        return <CollectionStatus />;
+        return <CollectionStatus user={user} />;
       case '/analytics/cost-efficiency':
         return <CostEfficiency user={user} />;
       case '/analytics/activity-status':
         return <ActivityStatus user={user} />;
       case '/admin/over-investment':
         return user.role === 'admin' ? <MonthlyOverInvestment user={user} /> : <Dashboard user={user} />;
+      case '/admin/monthly-collection':
+        return user.role === 'admin' ? <MonthlyCollection user={user} /> : <Dashboard user={user} />;
       case '/admin/confirmed-collection':
         return user.role === 'admin' ? <ConfirmedCollection user={user} /> : <Dashboard user={user} />;
       case '/admin/outstanding-balance':

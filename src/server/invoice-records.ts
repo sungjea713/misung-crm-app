@@ -288,15 +288,17 @@ export async function updateInvoiceRecord(
     }
 
     // 다중 지점 사용자(송기정, 김태현)의 경우 branch에 따라 이름 suffix 추가
+    let createdByName = userName;
     let updatedByName = userName;
     if ((userName === '송기정' || userName === '김태현') && invoiceData.branch) {
       if (invoiceData.branch === '인천') {
+        createdByName = `${userName}(In)`;
         updatedByName = `${userName}(In)`;
       }
       // '본점'인 경우는 suffix 없이 그대로 사용
     }
 
-    // branch 필드는 DB에 저장하지 않음 (updated_by에 반영됨)
+    // branch 필드는 DB에 저장하지 않음 (created_by와 updated_by에 반영됨)
     const { branch, ...dataToUpdate } = invoiceData;
 
     // site_summary에서 매출/매입 금액 가져오기
@@ -343,6 +345,7 @@ export async function updateInvoiceRecord(
         is_over_invested: isOverInvested,
         invoice_date: dataToUpdate.invoice_date,
         invoice_amount: dataToUpdate.invoice_amount,
+        created_by: createdByName,  // 지점 변경 시 created_by도 업데이트
         updated_by: updatedByName,
       })
       .eq('id', id)

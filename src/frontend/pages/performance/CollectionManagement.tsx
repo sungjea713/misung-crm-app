@@ -1,24 +1,30 @@
 import React, { useState, useEffect } from 'react';
 import { Plus, RefreshCw } from 'lucide-react';
-import { InvoiceRecordForm } from '../../components/InvoiceRecordForm';
-import { InvoiceRecordTable } from '../../components/InvoiceRecordTable';
-import type { User, InvoiceRecord, InvoiceRecordFormData } from '../../types';
+import { CollectionRecordForm } from '../../components/CollectionRecordForm';
+import { CollectionRecordTable } from '../../components/CollectionRecordTable';
+import type { User, CollectionRecord, CollectionRecordFormData, CollectionRecordFilters } from '../../types';
 
-interface InvoicePageProps {
+interface CollectionManagementProps {
   user: User;
 }
 
-export default function Invoice({ user }: InvoicePageProps) {
-  const [records, setRecords] = useState<InvoiceRecord[]>([]);
+export default function CollectionManagement({ user }: CollectionManagementProps) {
+  const [records, setRecords] = useState<CollectionRecord[]>([]);
   const [loading, setLoading] = useState(false);
   const [viewMode, setViewMode] = useState<'list' | 'form'>('list');
-  const [editingRecord, setEditingRecord] = useState<InvoiceRecord | undefined>();
+  const [editingRecord, setEditingRecord] = useState<CollectionRecord | undefined>();
   const [error, setError] = useState('');
+  const [users, setUsers] = useState<User[]>([]);
+  const [selectedUserId, setSelectedUserId] = useState<string>(user.id);
 
-  // 필터 상태
-  const [selectedUser, setSelectedUser] = useState<string>(user.id);
-  const [year, setYear] = useState(new Date().getFullYear());
-  const [month, setMonth] = useState(new Date().getMonth() + 1);
+  // Check if user is multi-branch (송기정 or 김태현)
+  const isMultiBranchUser = user.name === '송기정' || user.name === '김태현';
+  const [selectedBranch, setSelectedBranch] = useState<'all' | '본점' | '인천'>('all');
+
+  // 현재 날짜를 기준으로 년도와 월 설정
+  const currentDate = new Date();
+  const [year, setYear] = useState(currentDate.getFullYear());
+  const [month, setMonth] = useState(currentDate.getMonth() + 1);
   const [page, setPage] = useState(1);
   const [pagination, setPagination] = useState({
     total: 0,
@@ -27,34 +33,31 @@ export default function Invoice({ user }: InvoicePageProps) {
     totalPages: 0,
   });
 
-  // Check if user is multi-branch (송기정 or 김태현)
-  const isMultiBranchUser = user.name === '송기정' || user.name === '김태현';
-  const [selectedBranch, setSelectedBranch] = useState<'all' | '본점' | '인천'>('all');
+  // 연도 옵션 (2020년부터 현재 연도까지)
+  const yearOptions = Array.from({ length: currentDate.getFullYear() - 2019 }, (_, i) => 2020 + i);
 
-  // 관리자인 경우 사용자 목록
-  const [users, setUsers] = useState<Array<{ id: string; name: string; department: string }>>([]);
-
-  // 사용자 목록 로드 (관리자만)
+  // 관리자인 경우 사용자 목록 가져오기
   useEffect(() => {
     if (user.role === 'admin') {
       fetchUsers();
     }
   }, [user.role]);
 
-  // 계산서 발행 목록 로드
   useEffect(() => {
-    fetchRecords();
-  }, [selectedUser, selectedBranch, year, month, page]);
+    if (viewMode === 'list') {
+      fetchRecords();
+    }
+  }, [year, month, page, viewMode, selectedUserId, selectedBranch]);
 
   const fetchUsers = async () => {
     try {
       const token = localStorage.getItem('crm_token');
-      const response = await fetch('/api/users', {
+      const response = await fetch('/api/collections/users', {
         headers: { Authorization: `Bearer ${token}` },
       });
-      const data = await response.json();
-      if (data.success) {
-        setUsers(data.data);
+      const result = await response.json();
+      if (result.success) {
+        setUsers(result.data || []);
       }
     } catch (error) {
       console.error('Error fetching users:', error);
@@ -66,42 +69,54 @@ export default function Invoice({ user }: InvoicePageProps) {
     setError('');
     try {
       const token = localStorage.getItem('crm_token');
+
       const params = new URLSearchParams();
-      params.append('user_id', selectedUser);
+      params.append('user_id', user.role === 'admin' ? selectedUserId : user.id);
 
       // For multi-branch users, filter by branch if not 'all'
       if (isMultiBranchUser && selectedBranch !== 'all') {
         const createdByFilter = selectedBranch === '인천' ? `${user.name}(In)` : user.name;
         params.append('created_by', createdByFilter);
       }
-
       params.append('year', year.toString());
       params.append('month', month.toString());
       params.append('page', page.toString());
       params.append('limit', '20');
 
-      const response = await fetch(`/api/invoice-records?${params}`, {
+      const response = await fetch(`/api/collections?${params}`, {
         headers: { Authorization: `Bearer ${token}` },
       });
 
-      const data = await response.json();
-      if (data.success) {
-        setRecords(data.data || []);
-        setPagination(data.pagination);
+      const result = await response.json();
+      if (result.success) {
+        setRecords(result.data || []);
+        setPagination(result.pagination || { total: 0, page: 1, limit: 20, totalPages: 0 });
       } else {
-        setError(data.message || '데이터를 불러오는데 실패했습니다.');
+        setError(result.message || '데이터를 불러오는데 실패했습니다.');
       }
     } catch (error: any) {
       setError('데이터를 불러오는데 실패했습니다.');
-      console.error('Error fetching invoice records:', error);
+      console.error('Error fetching records:', error);
     } finally {
       setLoading(false);
     }
   };
 
-  const handleSave = async (formData: InvoiceRecordFormData) => {
+  const handleNewRecord = () => {
+    setEditingRecord(undefined);
+    setViewMode('form');
+  };
+
+  const handleEditRecord = (record: CollectionRecord) => {
+    setEditingRecord(record);
+    setViewMode('form');
+  };
+
+  const handleSaveRecord = async (data: CollectionRecordFormData) => {
     const token = localStorage.getItem('crm_token');
-    const url = editingRecord ? `/api/invoice-records/${editingRecord.id}` : '/api/invoice-records';
+    const url = editingRecord
+      ? `/api/collections/${editingRecord.id}`
+      : '/api/collections';
     const method = editingRecord ? 'PUT' : 'POST';
 
     const response = await fetch(url, {
@@ -110,41 +125,30 @@ export default function Invoice({ user }: InvoicePageProps) {
         'Content-Type': 'application/json',
         Authorization: `Bearer ${token}`,
       },
-      body: JSON.stringify(formData),
+      body: JSON.stringify(data),
     });
 
-    const data = await response.json();
-    if (!data.success) {
-      throw new Error(data.message);
+    const result = await response.json();
+    if (!result.success) {
+      throw new Error(result.message || '저장에 실패했습니다.');
     }
 
-    // 성공 시 목록 새로고침
     await fetchRecords();
-    setViewMode('list');
-    setEditingRecord(undefined);
   };
 
-  const handleDelete = async (id: number) => {
+  const handleDeleteRecord = async (id: number) => {
     const token = localStorage.getItem('crm_token');
-    const response = await fetch(`/api/invoice-records/${id}`, {
+    const response = await fetch(`/api/collections/${id}`, {
       method: 'DELETE',
       headers: { Authorization: `Bearer ${token}` },
     });
 
-    const data = await response.json();
-    if (!data.success) {
-      throw new Error(data.message);
+    const result = await response.json();
+    if (!result.success) {
+      throw new Error(result.message || '삭제에 실패했습니다.');
     }
 
-    // 성공 시 목록 새로고침 및 폼 닫기
     await fetchRecords();
-    setViewMode('list');
-    setEditingRecord(undefined);
-  };
-
-  const handleEdit = (record: InvoiceRecord) => {
-    setEditingRecord(record);
-    setViewMode('form');
   };
 
   const handleCloseForm = () => {
@@ -152,20 +156,9 @@ export default function Invoice({ user }: InvoicePageProps) {
     setEditingRecord(undefined);
   };
 
-  const handleNewForm = () => {
-    setEditingRecord(undefined);
-    setViewMode('form');
-  };
-
   const handlePageChange = (newPage: number) => {
     setPage(newPage);
   };
-
-  // 연도 선택 옵션 생성 (최근 6년)
-  const yearOptions = Array.from({ length: 6 }, (_, i) => new Date().getFullYear() - i);
-
-  // 월 선택 옵션 생성
-  const monthOptions = Array.from({ length: 12 }, (_, i) => i + 1);
 
   return (
     <div className="page-container">
@@ -174,12 +167,12 @@ export default function Invoice({ user }: InvoicePageProps) {
           {/* Header */}
           <div className="flex items-center justify-between mb-6">
             <div>
-              <h1 className="page-title">계산서 발행</h1>
-              <p className="page-description">계산서를 발행하고 관리합니다.</p>
+              <h1 className="page-title">수금 현황</h1>
+              <p className="page-description">수금 내역을 등록하고 미수금 잔액을 관리합니다.</p>
             </div>
-            <button onClick={handleNewForm} className="btn-primary flex items-center gap-2">
+            <button onClick={handleNewRecord} className="btn-primary flex items-center gap-2">
               <Plus className="h-5 w-5" />
-              새 계산서 발행
+              새 수금 등록
             </button>
           </div>
 
@@ -216,7 +209,7 @@ export default function Invoice({ user }: InvoicePageProps) {
                   }}
                   className="input-field"
                 >
-                  {monthOptions.map((m) => (
+                  {Array.from({ length: 12 }, (_, i) => i + 1).map((m) => (
                     <option key={m} value={m}>
                       {m}월
                     </option>
@@ -225,13 +218,13 @@ export default function Invoice({ user }: InvoicePageProps) {
               </div>
 
               {/* User (Admin only) */}
-              {user.role === 'admin' && users.length > 0 && (
+              {user.role === 'admin' && (
                 <div>
                   <label className="block text-sm font-medium text-gray-text mb-2">사용자</label>
                   <select
-                    value={selectedUser}
+                    value={selectedUserId}
                     onChange={(e) => {
-                      setSelectedUser(e.target.value);
+                      setSelectedUserId(e.target.value);
                       setPage(1);
                     }}
                     className="input-field"
@@ -280,34 +273,35 @@ export default function Invoice({ user }: InvoicePageProps) {
 
           {/* 에러 메시지 */}
           {error && (
-            <div className="bg-red-500/10 border border-red-500/50 rounded-lg p-4 mb-6">
-              <p className="text-red-500 text-sm">{error}</p>
+            <div className="bg-red-500 bg-opacity-10 border border-red-500 text-red-500 px-4 py-3 rounded mb-6">
+              {error}
             </div>
           )}
 
           {/* 테이블 */}
           {loading ? (
             <div className="card">
-              <div className="flex items-center justify-center py-20">
-                <RefreshCw className="h-8 w-8 text-primary animate-spin" />
+              <div className="flex flex-col items-center justify-center py-20 text-gray-text">
+                <RefreshCw size={48} className="animate-spin mb-4 opacity-50" />
+                <p className="text-lg">데이터를 불러오는 중...</p>
               </div>
             </div>
           ) : (
-            <InvoiceRecordTable
+            <CollectionRecordTable
               records={records}
-              onEdit={handleEdit}
+              onEdit={handleEditRecord}
               pagination={pagination}
               onPageChange={handlePageChange}
             />
           )}
         </>
       ) : (
-        <InvoiceRecordForm
+        <CollectionRecordForm
           user={user}
           record={editingRecord}
           onClose={handleCloseForm}
-          onSave={handleSave}
-          onDelete={editingRecord ? handleDelete : undefined}
+          onSave={handleSaveRecord}
+          onDelete={editingRecord ? handleDeleteRecord : undefined}
         />
       )}
     </div>

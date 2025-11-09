@@ -412,3 +412,95 @@ export interface MonthlyOverInvestmentData {
   month: number;
   rows: MonthlyOverInvestmentRow[];
 }
+
+// Monthly Collection Types
+export interface MonthlyCollectionRow {
+  manager_name: string;
+  collection_amount: number;
+  outstanding_amount: number;
+}
+
+export interface MonthlyCollection {
+  id: string;
+  year: number;
+  month: number;
+  manager_name: string;
+  collection_amount: number;
+  outstanding_amount: number;
+  created_at: string;
+  updated_at: string;
+  created_by?: string;
+}
+
+export interface MonthlyCollectionData {
+  year: number;
+  month: number;
+  rows: MonthlyCollectionRow[];
+}
+
+// Collection Record Types
+export interface CollectionRecord {
+  id: number;
+  user_id: string;
+  cms_id?: number;
+  cms_code?: string;
+  site_name?: string;
+  site_address?: string;
+  sales_manager?: string;
+  construction_manager?: string;
+  collection_date: string;  // 수금일 (YYYY-MM-DD)
+  collection_amount?: number;  // 수금 금액
+  outstanding_balance?: number;  // 미수금 잔액
+  created_at: string;
+  updated_at: string;
+  created_by: string;
+  updated_by?: string;
+  users?: {
+    name: string;
+    department: string;
+  };
+}
+
+export interface CollectionRecordFormData {
+  cms_id?: number;
+  cms_code?: string;
+  site_name?: string;
+  site_address?: string;
+  sales_manager?: string;
+  construction_manager?: string;
+  collection_date: string;
+  collection_amount?: number;
+}
+
+export interface CollectionRecordFilters {
+  user_id?: string;
+  year: number;
+  month: number;
+  page?: number;
+  limit?: number;
+}
+
+// Collection Stats Types (for analytics page)
+export interface MonthlyCollectionStats {
+  month: number;
+  targetCollection: number;           // 목표 수금 (주간 업무 계획)
+  userCollection: number;              // 사용자 수금 (수금 현황)
+  adminConfirmedCollection: number;    // 관리자 확정 수금 (월별 수금 데이터)
+  outstandingBalance: number;          // 현재 미수금 누계 (월별 수금 데이터)
+}
+
+export interface CollectionStatsSummary {
+  totalTargetCollection: number;
+  totalUserCollection: number;
+  totalAdminConfirmedCollection: number;
+  totalOutstandingBalance: number;
+}
+
+export interface CollectionStatsResponse {
+  success: boolean;
+  data?: {
+    monthly: MonthlyCollectionStats[];
+    summary: CollectionStatsSummary;
+  };
+  message?: string;
+}

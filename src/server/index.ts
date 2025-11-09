@@ -22,6 +22,7 @@ import { getActivityStats } from './activity-stats';
 import { getSalesStats } from './sales-stats';
 import { getOrderStats } from './order-stats';
 import { getCostEfficiencyStats } from './cost-efficiency-stats';
+import { getCollectionStats } from './collection-stats';
 import {
   searchConstructionSites as searchSitesForSales,
   getSalesActivities,
@@ -45,6 +46,20 @@ import {
   saveMonthlyOverInvestment,
   deleteMonthlyOverInvestment,
 } from './monthly-over-investment';
+import {
+  getMonthlyCollection,
+  saveMonthlyCollection,
+  deleteMonthlyCollection,
+} from './monthly-collection';
+import {
+  searchConstructionSites as searchSitesForCollection,
+  getCollectionRecords,
+  getCollectionRecord,
+  createCollectionRecord,
+  updateCollectionRecord,
+  deleteCollectionRecord,
+  getAllUsers as getAllUsersForCollection,
+} from './collections';
 
 const PORT = process.env.PORT || 3001;
 const isDevelopment = process.env.NODE_ENV !== 'production';
@@ -356,6 +371,27 @@ const server = Bun.serve({
         console.log('GET /api/cost-efficiency-stats - Year:', year, 'User:', userName, 'ShowAllBranches:', showAllBranches);
 
         const result = await getCostEfficiencyStats(year, userName, showAllBranches);
+        return Response.json(result, { status: result.success ? 200 : 400 });
+      }
+
+      // Collection Stats API Route (수금 실적 및 미수금 관리 현황)
+      if (pathname === '/api/collection-stats' && req.method === 'GET') {
+        const token = req.headers.get('Authorization')?.replace('Bearer ', '');
+        if (!token) {
+          return Response.json({ success: false, message: 'Unauthorized' }, { status: 401 });
+        }
+
+        const year = parseInt(url.searchParams.get('year') || new Date().getFullYear().toString());
+        const userName = url.searchParams.get('user_name');
+        const showAllBranches = url.searchParams.get('show_all_branches') === 'true';
+
+        if (!userName) {
+          return Response.json({ success: false, message: 'user_name parameter is required' }, { status: 400 });
+        }
+
+        console.log('GET /api/collection-stats - Year:', year, 'User:', userName, 'ShowAllBranches:', showAllBranches);
+
+        const result = await getCollectionStats(year, userName, showAllBranches);
         return Response.json(result, { status: result.success ? 200 : 400 });
       }
 
@@ -710,6 +746,170 @@ const server = Bun.serve({
         const month = parseInt(url.searchParams.get('month') || (new Date().getMonth() + 1).toString());
 
         const result = await deleteMonthlyOverInvestment(year, month);
+        return Response.json(result, { status: result.success ? 200 : 400 });
+      }
+
+      // Monthly Collection API Routes
+      // Get monthly collection data
+      if (pathname === '/api/monthly-collection' && req.method === 'GET') {
+        const token = req.headers.get('Authorization')?.replace('Bearer ', '');
+        if (!token) {
+          return Response.json({ success: false, message: 'Unauthorized' }, { status: 401 });
+        }
+
+        const year = parseInt(url.searchParams.get('year') || new Date().getFullYear().toString());
+        const month = parseInt(url.searchParams.get('month') || (new Date().getMonth() + 1).toString());
+
+        const result = await getMonthlyCollection(year, month);
+        return Response.json(result, { status: result.success ? 200 : 400 });
+      }
+
+      // Save monthly collection data
+      if (pathname === '/api/monthly-collection' && req.method === 'POST') {
+        const token = req.headers.get('Authorization')?.replace('Bearer ', '');
+        if (!token) {
+          return Response.json({ success: false, message: 'Unauthorized' }, { status: 401 });
+        }
+
+        const userResult = await handleGetCurrentUser(token);
+        if (!userResult.success || !userResult.user || userResult.user.role !== 'admin') {
+          return Response.json({ success: false, message: 'Admin only' }, { status: 403 });
+        }
+
+        const data = await req.json();
+        const result = await saveMonthlyCollection(data, userResult.user.name);
+        return Response.json(result, { status: result.success ? 200 : 400 });
+      }
+
+      // Delete monthly collection data
+      if (pathname === '/api/monthly-collection' && req.method === 'DELETE') {
+        const token = req.headers.get('Authorization')?.replace('Bearer ', '');
+        if (!token) {
+          return Response.json({ success: false, message: 'Unauthorized' }, { status: 401 });
+        }
+
+        const userResult = await handleGetCurrentUser(token);
+        if (!userResult.success || !userResult.user || userResult.user.role !== 'admin') {
+          return Response.json({ success: false, message: 'Admin only' }, { status: 403 });
+        }
+
+        const year = parseInt(url.searchParams.get('year') || new Date().getFullYear().toString());
+        const month = parseInt(url.searchParams.get('month') || (new Date().getMonth() + 1).toString());
+
+        const result = await deleteMonthlyCollection(year, month);
+        return Response.json(result, { status: result.success ? 200 : 400 });
+      }
+
+      // Collection Records API Routes
+      // Get all users for collection (admin only)
+      if (pathname === '/api/collections/users' && req.method === 'GET') {
+        const token = req.headers.get('Authorization')?.replace('Bearer ', '');
+        if (!token) {
+          return Response.json({ success: false, message: 'Unauthorized' }, { status: 401 });
+        }
+
+        const userResult = await handleGetCurrentUser(token);
+        if (!userResult.success || !userResult.user || userResult.user.role !== 'admin') {
+          return Response.json({ success: false, message: 'Admin only' }, { status: 403 });
+        }
+
+        const result = await getAllUsersForCollection();
+        return Response.json(result, { status: result.success ? 200 : 400 });
+      }
+
+      // Search construction sites for collections
+      if (pathname === '/api/collections/sites' && req.method === 'GET') {
+        const token = req.headers.get('Authorization')?.replace('Bearer ', '');
+        if (!token) {
+          return Response.json({ success: false, message: 'Unauthorized' }, { status: 401 });
+        }
+
+        const query = url.searchParams.get('query') || '';
+        const result = await searchSitesForCollection(query);
+        return Response.json(result, { status: result.success ? 200 : 400 });
+      }
+
+      // Get collection records (list)
+      if (pathname === '/api/collections' && req.method === 'GET') {
+        const token = req.headers.get('Authorization')?.replace('Bearer ', '');
+        if (!token) {
+          return Response.json({ success: false, message: 'Unauthorized' }, { status: 401 });
+        }
+
+        const filters = {
+          user_id: url.searchParams.get('user_id') || undefined,
+          created_by: url.searchParams.get('created_by') || undefined,
+          year: parseInt(url.searchParams.get('year') || new Date().getFullYear().toString()),
+          month: parseInt(url.searchParams.get('month') || (new Date().getMonth() + 1).toString()),
+          page: parseInt(url.searchParams.get('page') || '1'),
+          limit: parseInt(url.searchParams.get('limit') || '20'),
+        };
+
+        const result = await getCollectionRecords(filters);
+        return Response.json(result, { status: result.success ? 200 : 400 });
+      }
+
+      // Create collection record
+      if (pathname === '/api/collections' && req.method === 'POST') {
+        const token = req.headers.get('Authorization')?.replace('Bearer ', '');
+        if (!token) {
+          return Response.json({ success: false, message: 'Unauthorized' }, { status: 401 });
+        }
+
+        const userResult = await handleGetCurrentUser(token);
+        if (!userResult.success || !userResult.user) {
+          return Response.json({ success: false, message: 'Unauthorized' }, { status: 401 });
+        }
+
+        const data = await req.json();
+        const result = await createCollectionRecord(userResult.user.id, userResult.user.name, data);
+        return Response.json(result, { status: result.success ? 201 : 400 });
+      }
+
+      // Get single collection record
+      if (pathname.match(/^\/api\/collections\/\d+$/) && req.method === 'GET') {
+        const token = req.headers.get('Authorization')?.replace('Bearer ', '');
+        if (!token) {
+          return Response.json({ success: false, message: 'Unauthorized' }, { status: 401 });
+        }
+
+        const id = parseInt(pathname.split('/')[3]);
+        const result = await getCollectionRecord(id);
+        return Response.json(result, { status: result.success ? 200 : 400 });
+      }
+
+      // Update collection record
+      if (pathname.match(/^\/api\/collections\/\d+$/) && req.method === 'PUT') {
+        const token = req.headers.get('Authorization')?.replace('Bearer ', '');
+        if (!token) {
+          return Response.json({ success: false, message: 'Unauthorized' }, { status: 401 });
+        }
+
+        const userResult = await handleGetCurrentUser(token);
+        if (!userResult.success || !userResult.user) {
+          return Response.json({ success: false, message: 'Unauthorized' }, { status: 401 });
+        }
+
+        const id = parseInt(pathname.split('/')[3]);
+        const data = await req.json();
+        const result = await updateCollectionRecord(id, userResult.user.id, userResult.user.name, data);
+        return Response.json(result, { status: result.success ? 200 : 400 });
+      }
+
+      // Delete collection record
+      if (pathname.match(/^\/api\/collections\/\d+$/) && req.method === 'DELETE') {
+        const token = req.headers.get('Authorization')?.replace('Bearer ', '');
+        if (!token) {
+          return Response.json({ success: false, message: 'Unauthorized' }, { status: 401 });
+        }
+
+        const userResult = await handleGetCurrentUser(token);
+        if (!userResult.success || !userResult.user) {
+          return Response.json({ success: false, message: 'Unauthorized' }, { status: 401 });
+        }
+
+        const id = parseInt(pathname.split('/')[3]);
+        const result = await deleteCollectionRecord(id, userResult.user.id);
         return Response.json(result, { status: result.success ? 200 : 400 });
       }
 

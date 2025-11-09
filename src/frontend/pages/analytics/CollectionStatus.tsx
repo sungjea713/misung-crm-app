@@ -1,19 +1,260 @@
-import React from 'react';
-import { CreditCard } from 'lucide-react';
+import React, { useState, useEffect } from 'react';
+import { RefreshCw } from 'lucide-react';
+import type { User, MonthlyCollectionStats, CollectionStatsSummary } from '../../types';
 
-export default function CollectionStatus() {
+interface CollectionStatusProps {
+  user: User;
+}
+
+export default function CollectionStatus({ user }: CollectionStatusProps) {
+  const [data, setData] = useState<{
+    monthly: MonthlyCollectionStats[];
+    summary: CollectionStatsSummary;
+  } | null>(null);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState('');
+
+  // 필터 상태
+  const [year, setYear] = useState(new Date().getFullYear());
+  const [selectedUser, setSelectedUser] = useState(user.name);
+  const [selectedBranch, setSelectedBranch] = useState<'all' | '본점' | '인천'>('all'); // For multi-branch users filtering their own data
+  const [users, setUsers] = useState<any[]>([]); // Changed to any[] to accommodate expanded structure
+
+  // Check if current user is multi-branch
+  const isMultiBranchUser = user.name === '송기정' || user.name === '김태현';
+
+  // 사용자 목록 로드 (관리자만)
+  useEffect(() => {
+    if (user.role === 'admin') {
+      fetchUsers();
+    }
+  }, [user.role]);
+
+  // 통계 데이터 로드
+  useEffect(() => {
+    fetchStats();
+  }, [year, selectedUser, selectedBranch]);
+
+  const fetchUsers = async () => {
+    try {
+      const token = localStorage.getItem('crm_token');
+      const response = await fetch('/api/users', {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      const result = await response.json();
+      if (result.success) {
+        setUsers(result.data);
+        // Set first user as default if admin and no user selected
+        if (user.role === 'admin' && !selectedUser && result.data.length > 0) {
+          const firstUser = result.data[0];
+          setSelectedUser(firstUser.created_by || firstUser.name);
+        }
+      }
+    } catch (error) {
+      console.error('Error fetching users:', error);
+    }
+  };
+
+  const fetchStats = async () => {
+    setLoading(true);
+    setError('');
+    try {
+      const token = localStorage.getItem('crm_token');
+
+      // Determine the user_name parameter based on branch selection for multi-branch users
+      let userNameParam = selectedUser;
+      let showAllBranches = false;
+
+      if (user.role !== 'admin' && isMultiBranchUser) {
+        // Multi-branch user filtering their own data by branch
+        if (selectedBranch === 'all') {
+          // For 'all', pass base name and flag to backend to query both branches
+          userNameParam = user.name;
+          showAllBranches = true;
+        } else if (selectedBranch === '인천') {
+          userNameParam = `${user.name}(In)`;
+        } else {
+          userNameParam = user.name;
+        }
+      }
+
+      const params = new URLSearchParams({
+        year: year.toString(),
+        user_name: userNameParam,
+      });
+
+      if (showAllBranches) {
+        params.append('show_all_branches', 'true');
+      }
+
+      const response = await fetch(`/api/collection-stats?${params}`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+
+      const result = await response.json();
+      if (result.success && result.data) {
+        setData(result.data);
+      } else {
+        setError(result.message || '데이터를 불러오는데 실패했습니다.');
+      }
+    } catch (error: any) {
+      setError('데이터를 불러오는데 실패했습니다.');
+      console.error('Error fetching collection stats:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // 연도 선택 옵션 생성 (최근 6년)
+  const yearOptions = Array.from({ length: 6 }, (_, i) => new Date().getFullYear() - i);
+
+  // 금액 포맷팅 (천 단위 쉼표)
+  const formatAmount = (amount: number) => {
+    return Math.round(amount).toLocaleString('ko-KR');
+  };
+
   return (
     <div className="page-container">
       <h1 className="page-title">수금 실적 및 미수금 관리 현황</h1>
-      <p className="page-description">수금 실적과 미수금 현황을 관리합니다.</p>
+      <p className="page-description">월별 수금 실적과 미수금 현황을 확인합니다.</p>
 
-      <div className="card">
-        <div className="flex flex-col items-center justify-center py-20 text-gray-text">
-          <CreditCard className="h-16 w-16 mb-4 opacity-50" />
-          <p className="text-lg mb-2">이 페이지는 준비 중입니다.</p>
-          <p className="text-sm">수금 실적 및 미수금 데이터가 곧 표시됩니다.</p>
+      {/* 필터 영역 */}
+      <div className="card mb-6">
+        <div className="flex flex-wrap items-end gap-4">
+          {/* 관리자일 경우 사용자 선택 */}
+          {user.role === 'admin' && users.length > 0 && (
+            <div className="flex-1 min-w-[200px]">
+              <label className="block text-sm font-medium text-gray-text mb-2">사용자 선택</label>
+              <select
+                value={selectedUser}
+                onChange={(e) => setSelectedUser(e.target.value)}
+                className="input-field"
+              >
+                {users.map((u, index) => (
+                  <option key={`${u.id}-${index}`} value={u.created_by || u.name}>
+                    {u.display_name || `${u.name} (${u.department})`}
+                  </option>
+                ))}
+              </select>
+            </div>
+          )}
+
+          {/* 다중 지점 사용자: 지점 선택 */}
+          {user.role !== 'admin' && isMultiBranchUser && (
+            <div className="flex-1 min-w-[150px]">
+              <label className="block text-sm font-medium text-gray-text mb-2">지점</label>
+              <select
+                value={selectedBranch}
+                onChange={(e) => setSelectedBranch(e.target.value as 'all' | '본점' | '인천')}
+                className="input-field"
+              >
+                <option value="all">전체</option>
+                <option value="본점">본점</option>
+                <option value="인천">인천</option>
+              </select>
+            </div>
+          )}
+
+          {/* 연도 선택 */}
+          <div className="flex-1 min-w-[150px]">
+            <label className="block text-sm font-medium text-gray-text mb-2">연도</label>
+            <select value={year} onChange={(e) => setYear(parseInt(e.target.value))} className="input-field">
+              {yearOptions.map((y) => (
+                <option key={y} value={y}>
+                  {y}년
+                </option>
+              ))}
+            </select>
+          </div>
+
+          {/* 새로고침 버튼 */}
+          <div>
+            <button onClick={fetchStats} className="btn-secondary flex items-center gap-2" disabled={loading}>
+              <RefreshCw className={`h-5 w-5 ${loading ? 'animate-spin' : ''}`} />
+              새로고침
+            </button>
+          </div>
         </div>
       </div>
+
+      {/* 에러 메시지 */}
+      {error && (
+        <div className="bg-red-500/10 border border-red-500/50 rounded-lg p-4 mb-6">
+          <p className="text-red-500 text-sm">{error}</p>
+        </div>
+      )}
+
+      {/* 로딩 중 */}
+      {loading && (
+        <div className="card">
+          <div className="flex items-center justify-center py-20">
+            <RefreshCw className="h-8 w-8 text-primary animate-spin" />
+          </div>
+        </div>
+      )}
+
+      {/* 데이터 테이블 */}
+      {!loading && data && (
+        <div className="card overflow-x-auto">
+          <table className="w-full">
+            <thead>
+              <tr className="border-b border-gray-border">
+                <th className="px-4 py-3 text-left text-sm font-semibold text-gray-text">월</th>
+                <th className="px-4 py-3 text-right text-sm font-semibold text-gray-text">목표 수금 (원)</th>
+                <th className="px-4 py-3 text-right text-sm font-semibold text-gray-text">사용자 수금 (원)</th>
+                <th className="px-4 py-3 text-right text-sm font-semibold text-gray-text">관리자 확정 수금 (원)</th>
+                <th className="px-4 py-3 text-right text-sm font-semibold text-gray-text">현재 미수금 누계 (원)</th>
+              </tr>
+            </thead>
+            <tbody>
+              {data.monthly.map((monthData) => (
+                <tr key={monthData.month} className="border-b border-gray-border hover:bg-bg-darker transition-colors">
+                  <td className="px-4 py-3 text-sm text-white font-medium">{monthData.month}월</td>
+                  <td className="px-4 py-3 text-sm text-right font-mono text-blue-400">
+                    {formatAmount(monthData.targetCollection)}
+                  </td>
+                  <td className="px-4 py-3 text-sm text-right font-mono text-green-400">
+                    {formatAmount(monthData.userCollection)}
+                  </td>
+                  <td className="px-4 py-3 text-sm text-right font-mono text-primary">
+                    {formatAmount(monthData.adminConfirmedCollection)}
+                  </td>
+                  <td className="px-4 py-3 text-sm text-right font-mono text-amber-400">
+                    {formatAmount(monthData.outstandingBalance)}
+                  </td>
+                </tr>
+              ))}
+
+              {/* 누계 행 */}
+              <tr className="bg-bg-lighter border-t-2 border-primary">
+                <td className="px-4 py-4 text-sm text-white font-bold">누계</td>
+                <td className="px-4 py-4 text-sm text-right font-mono font-bold text-blue-400">
+                  {formatAmount(data.summary.totalTargetCollection)}
+                </td>
+                <td className="px-4 py-4 text-sm text-right font-mono font-bold text-green-400">
+                  {formatAmount(data.summary.totalUserCollection)}
+                </td>
+                <td className="px-4 py-4 text-sm text-right font-mono font-bold text-primary">
+                  {formatAmount(data.summary.totalAdminConfirmedCollection)}
+                </td>
+                <td className="px-4 py-4 text-sm text-right font-mono font-bold text-amber-400">
+                  {formatAmount(data.summary.totalOutstandingBalance)}
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      )}
+
+      {/* 데이터 없음 */}
+      {!loading && !error && !data && (
+        <div className="card">
+          <div className="flex flex-col items-center justify-center py-20 text-gray-text">
+            <p className="text-lg mb-2">데이터가 없습니다.</p>
+            <p className="text-sm">다른 연도를 선택하거나 새로고침을 시도해주세요.</p>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
