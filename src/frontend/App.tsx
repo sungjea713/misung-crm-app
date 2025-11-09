@@ -14,9 +14,9 @@ import OrderAchievement from './pages/analytics/OrderAchievement';
 import CollectionStatus from './pages/analytics/CollectionStatus';
 import CostEfficiency from './pages/analytics/CostEfficiency';
 import ActivityStatus from './pages/analytics/ActivityStatus';
-import OverInvestment from './pages/admin/OverInvestment';
 import ConfirmedCollection from './pages/admin/ConfirmedCollection';
 import OutstandingBalance from './pages/admin/OutstandingBalance';
+import MonthlyOverInvestment from './pages/analytics/MonthlyOverInvestment';
 import type { User, LoginCredentials, ChangePasswordData } from './types';
 
 export default function App() {
@@ -169,7 +169,7 @@ export default function App() {
       case '/analytics/activity-status':
         return <ActivityStatus user={user} />;
       case '/admin/over-investment':
-        return user.role === 'admin' ? <OverInvestment user={user} /> : <Dashboard user={user} />;
+        return user.role === 'admin' ? <MonthlyOverInvestment user={user} /> : <Dashboard user={user} />;
       case '/admin/confirmed-collection':
         return user.role === 'admin' ? <ConfirmedCollection user={user} /> : <Dashboard user={user} />;
       case '/admin/outstanding-balance':

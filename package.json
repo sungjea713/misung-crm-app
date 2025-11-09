@@ -16,7 +16,8 @@
     "lucide-react": "^0.303.0",
     "react": "^18.2.0",
     "react-dom": "^18.2.0",
-    "recharts": "^3.3.0"
+    "recharts": "^3.3.0",
+    "xlsx": "^0.18.5"
   },
   "devDependencies": {
     "@types/react": "^18.2.45",

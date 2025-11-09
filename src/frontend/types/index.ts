@@ -389,3 +389,26 @@ export interface OrderStatsResponse {
   };
   message?: string;
 }
+
+// Monthly Over Investment Types
+export interface MonthlyOverInvestmentRow {
+  manager_name: string;
+  amount: number;
+}
+
+export interface MonthlyOverInvestment {
+  id: string;
+  year: number;
+  month: number;
+  manager_name: string;
+  amount: number;
+  created_at: string;
+  updated_at: string;
+  created_by?: string;
+}
+
+export interface MonthlyOverInvestmentData {
+  year: number;
+  month: number;
+  rows: MonthlyOverInvestmentRow[];
+}

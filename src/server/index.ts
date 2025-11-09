@@ -40,6 +40,11 @@ import {
   deleteInvoiceRecord,
   getSiteSummary,
 } from './invoice-records';
+import {
+  getMonthlyOverInvestment,
+  saveMonthlyOverInvestment,
+  deleteMonthlyOverInvestment,
+} from './monthly-over-investment';
 
 const PORT = process.env.PORT || 3001;
 const isDevelopment = process.env.NODE_ENV !== 'production';
@@ -654,6 +659,57 @@ const server = Bun.serve({
         }
 
         const result = await getAllUsers();
+        return Response.json(result, { status: result.success ? 200 : 400 });
+      }
+
+      // Monthly Over Investment API Routes
+      // Get monthly over investment data
+      if (pathname === '/api/monthly-over-investment' && req.method === 'GET') {
+        const token = req.headers.get('Authorization')?.replace('Bearer ', '');
+        if (!token) {
+          return Response.json({ success: false, message: 'Unauthorized' }, { status: 401 });
+        }
+
+        const year = parseInt(url.searchParams.get('year') || new Date().getFullYear().toString());
+        const month = parseInt(url.searchParams.get('month') || (new Date().getMonth() + 1).toString());
+
+        const result = await getMonthlyOverInvestment(year, month);
+        return Response.json(result, { status: result.success ? 200 : 400 });
+      }
+
+      // Save monthly over investment data
+      if (pathname === '/api/monthly-over-investment' && req.method === 'POST') {
+        const token = req.headers.get('Authorization')?.replace('Bearer ', '');
+        if (!token) {
+          return Response.json({ success: false, message: 'Unauthorized' }, { status: 401 });
+        }
+
+        const userResult = await handleGetCurrentUser(token);
+        if (!userResult.success || !userResult.user || userResult.user.role !== 'admin') {
+          return Response.json({ success: false, message: 'Admin only' }, { status: 403 });
+        }
+
+        const data = await req.json();
+        const result = await saveMonthlyOverInvestment(data, userResult.user.name);
+        return Response.json(result, { status: result.success ? 200 : 400 });
+      }
+
+      // Delete monthly over investment data
+      if (pathname === '/api/monthly-over-investment' && req.method === 'DELETE') {
+        const token = req.headers.get('Authorization')?.replace('Bearer ', '');
+        if (!token) {
+          return Response.json({ success: false, message: 'Unauthorized' }, { status: 401 });
+        }
+
+        const userResult = await handleGetCurrentUser(token);
+        if (!userResult.success || !userResult.user || userResult.user.role !== 'admin') {
+          return Response.json({ success: false, message: 'Admin only' }, { status: 403 });
+        }
+
+        const year = parseInt(url.searchParams.get('year') || new Date().getFullYear().toString());
+        const month = parseInt(url.searchParams.get('month') || (new Date().getMonth() + 1).toString());
+
+        const result = await deleteMonthlyOverInvestment(year, month);
         return Response.json(result, { status: result.success ? 200 : 400 });
       }
 
