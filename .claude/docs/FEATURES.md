@@ -70,7 +70,25 @@ is_over_invested = profit_difference < 0
 
 #### 5. 수금 관리 (/performance/collection)
 **파일**: [Collection.tsx](src/frontend/pages/performance/Collection.tsx)
-**상태**: 구현 예정
+**API**: /api/collections
+**서버**: [collections.ts](src/server/collections.ts)
+
+**기능**: 수금 내역 기록
+- 현장 선택 (construction_management 검색)
+- 수금일, 수금 금액 입력
+- 미수금 잔액 자동 계산 (monthly_collection 기준)
+- 지점 구분 지원 (본점/인천)
+
+**계산 로직**:
+```typescript
+outstanding_balance = monthlyOutstanding - collection_amount
+```
+
+**컴포넌트**:
+- [CollectionForm.tsx](src/frontend/components/CollectionForm.tsx)
+- [CollectionTable.tsx](src/frontend/components/CollectionTable.tsx)
+
+**필터**: 연도, 월, 사용자(관리자만), 지점(다중 지점 사용자)
 
 ---
 
@@ -147,9 +165,33 @@ is_over_invested = profit_difference < 0
 
 **표시**: 월별 테이블, 연도 합계
 
-#### 5. 수금 현황 (/analytics/collection-status)
+#### 5. 수금 실적 및 미수금 관리 현황 (/analytics/collection-status)
 **파일**: [CollectionStatus.tsx](src/frontend/pages/analytics/CollectionStatus.tsx)
-**상태**: 구현 예정
+**API**: /api/collection-stats
+**서버**: [collection-stats.ts](src/server/collection-stats.ts)
+
+**데이터 소스**:
+- **목표 수금**: weekly_plans.target_collection (plan_type = 'target' or 'both')
+- **사용자 수금**: collections.collection_amount (사용자 입력)
+- **관리자 확정 수금**: monthly_collection.collection_amount (관리자 업로드)
+- **현재 미수금 누계**: monthly_collection.outstanding_amount (관리자 업로드)
+
+**통계**:
+- 월별 목표 수금 집계
+- 월별 사용자 수금 집계
+- 월별 관리자 확정 수금
+- 월별 미수금 잔액
+- 연도 합계
+
+**표시**: 월별 테이블, 연도 합계
+
+**필터**: 연도, 사용자(관리자만), 지점(다중 지점 사용자)
+
+**색상 코드**:
+- 목표 수금: 파란색
+- 사용자 수금: 녹색
+- 관리자 확정 수금: 주황색
+- 미수금 누계: 황색
 
 ---
 
@@ -162,12 +204,15 @@ GET /api/weekly-plans - 주간 계획 목록
 GET /api/daily-plans - 일일 계획 목록
 GET /api/sales-activities - 영업 활동 목록
 GET /api/invoice-records - 계산서 발행 목록
+GET /api/collections - 수금 내역 목록
 GET /api/activity-stats - 영업 활동 통계
 GET /api/sales-stats - 월별 매출 통계
 GET /api/order-stats - 수주 실적 통계
 GET /api/cost-efficiency-stats - 원가 투입 효율
+GET /api/collection-stats - 수금 실적 및 미수금 관리
 GET /api/construction-sites/search - 현장 검색
 GET /api/site-summary/:cms - 현장 요약 정보
+GET /api/monthly-collection/:year/:month/:managerName - 월별 수금/미수금 현황
 ```
 
 ### POST 엔드포인트
@@ -179,6 +224,8 @@ POST /api/weekly-plans - 주간 계획 생성
 POST /api/daily-plans - 일일 계획 생성
 POST /api/sales-activities - 영업 활동 생성
 POST /api/invoice-records - 계산서 발행 생성
+POST /api/collections - 수금 내역 생성
+POST /api/monthly-collection/upload - 월별 수금/미수금 현황 업로드 (관리자만)
 ```
 
 ### PUT 엔드포인트
@@ -187,6 +234,7 @@ PUT /api/weekly-plans/:id - 주간 계획 수정
 PUT /api/daily-plans/:id - 일일 계획 수정
 PUT /api/sales-activities/:id - 영업 활동 수정
 PUT /api/invoice-records/:id - 계산서 발행 수정
+PUT /api/collections/:id - 수금 내역 수정
 ```
 
 ### DELETE 엔드포인트
@@ -195,6 +243,7 @@ DELETE /api/weekly-plans/:id - 주간 계획 삭제
 DELETE /api/daily-plans/:id - 일일 계획 삭제
 DELETE /api/sales-activities/:id - 영업 활동 삭제
 DELETE /api/invoice-records/:id - 계산서 발행 삭제
+DELETE /api/collections/:id - 수금 내역 삭제
 ```
 
 ---
@@ -238,9 +287,31 @@ const endDate = new Date(year, month, 1);
 .lt('created_at', endDate.toISOString())
 ```
 
+### 다중 지점 필터링
+```typescript
+// 다중 지점 사용자 확인
+const isMultiBranch = userName === '송기정' || userName === '김태현';
+
+// 전체 지점 조회
+if (isMultiBranch && showAllBranches) {
+  const orCondition = `created_by.eq."${userName}",created_by.eq."${userName}(In)"`;
+  query = query.or(orCondition);
+} else {
+  query = query.eq('created_by', userName);
+}
+```
+
 ---
 
 ## 최근 주요 변경사항
+
+### 2025-11-09: 수금 관리 기능 추가
+- collections 테이블 추가 (수금 내역 기록)
+- monthly_collection 테이블 추가 (관리자 월별 수금/미수금 업로드)
+- 수금 실적 및 미수금 관리 현황 페이지 추가
+- 다중 지점 데이터 관리 개선
+- 관리자 월별 수금/미수금 엑셀 업로드 기능
+- 주간 계획에 target_collection (목표 수금) 컬럼 추가
 
 ### 2025-01-08: 주간 계획 분리
 - weekly_plans에 plan_type 컬럼 추가

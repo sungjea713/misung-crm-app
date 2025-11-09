@@ -10,13 +10,13 @@ src/frontend/pages/
 │   ├── DailyPlan.tsx    일일 계획
 │   ├── SalesActivity.tsx 영업 활동
 │   ├── Invoice.tsx      계산서 발행
-│   └── Collection.tsx   수금 관리
+│   └── Collection.tsx   수금 관리 ⭐
 └── analytics/           통계 분석
     ├── ActivityStatus.tsx    영업 활동 현황
     ├── MonthlySales.tsx      월별 매출
     ├── OrderAchievement.tsx  수주 실적
     ├── CostEfficiency.tsx    원가 투입 효율
-    └── CollectionStatus.tsx  수금 현황
+    └── CollectionStatus.tsx  수금 실적 및 미수금 관리 ⭐
 ```
 
 ### 프론트엔드 컴포넌트
@@ -29,7 +29,9 @@ src/frontend/components/
 ├── SalesActivityForm.tsx    영업 활동 입력 폼
 ├── SalesActivityTable.tsx   영업 활동 테이블
 ├── InvoiceForm.tsx          계산서 발행 입력 폼
-└── InvoiceTable.tsx         계산서 발행 테이블
+├── InvoiceTable.tsx         계산서 발행 테이블
+├── CollectionForm.tsx       수금 입력 폼 ⭐
+└── CollectionTable.tsx      수금 테이블 ⭐
 ```
 
 ### 백엔드 API
@@ -41,10 +43,12 @@ src/server/
 ├── daily-plans.ts           일일 계획 API
 ├── sales-activities.ts      영업 활동 API
 ├── invoice-records.ts       계산서 발행 API
+├── collections.ts           수금 API ⭐
 ├── activity-stats.ts        영업 활동 통계
 ├── sales-stats.ts           월별 매출 통계
 ├── order-stats.ts           수주 실적 통계
-└── cost-efficiency-stats.ts 원가 투입 효율
+├── cost-efficiency-stats.ts 원가 투입 효율
+└── collection-stats.ts      수금 실적 및 미수금 관리 ⭐
 ```
 
 ### 타입 정의
@@ -154,6 +158,13 @@ const fetchStats = async () => {
 
 // user_id로 검색 (UUID)
 .eq('user_id', userId)
+
+// 다중 지점 사용자 (송기정, 김태현)
+const isMultiBranch = userName === '송기정' || userName === '김태현';
+if (isMultiBranch && showAllBranches) {
+  const orCondition = `created_by.eq."${userName}",created_by.eq."${userName}(In)"`;
+  query = query.or(orCondition);
+}
 ```
 
 #### 날짜 범위 필터링
@@ -244,16 +255,23 @@ git push
 ### 1. weekly_plans 쿼리 시
 - **활동 계획**: plan_type 필터 필요
 - **목표 금액**: created_by 사용 (sales_manager 아님!)
+- **목표 수금**: target_collection 필드 사용
 
 ### 2. site_summary 쿼리 시
 - **매출/매입**: 문자열 (쉼표 포함) → 숫자 변환 필요
 - **실행률**: expected_execution_rate로 매출/이익 기여 구분
 
-### 3. 권한 체크
+### 3. 다중 지점 사용자 (송기정, 김태현)
+- **본점 데이터**: created_by = "송기정" or "김태현"
+- **인천 데이터**: created_by = "송기정(In)" or "김태현(In)"
+- **전체 조회**: OR 쿼리 사용
+- **적용 테이블**: weekly_plans, daily_plans, sales_activities, invoice_records, collections
+
+### 4. 권한 체크
 - 일반 사용자: 본인 데이터만
 - 관리자: 모든 데이터 + 사용자 선택 가능
 
-### 4. 날짜 형식
+### 5. 날짜 형식
 - DB: ISO 8601 (YYYY-MM-DDTHH:mm:ss.sssZ)
 - 입력: YYYY-MM-DD
 - 표시: YYYY.MM.DD

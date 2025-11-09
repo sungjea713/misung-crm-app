@@ -12,7 +12,7 @@ interface SalesActivityTableProps {
 export function SalesActivityTable({ activities, user, onEdit, onDelete }: SalesActivityTableProps) {
   const formatAmount = (amount?: number) => {
     if (!amount) return '-';
-    return `${(amount / 1000).toLocaleString()}천원`;
+    return `${amount.toLocaleString()}원`;
   };
 
   const formatDate = (dateString: string) => {

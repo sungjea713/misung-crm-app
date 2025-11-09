@@ -85,7 +85,7 @@
   target_order_sales_contribution: number (목표 수주 매출 기여)
   target_order_profit_contribution: number (목표 수주 이익 기여)
   target_order_total: number (계산: 매출+이익)
-  target_collection: number (목표 회수)
+  target_collection: number (목표 수금)
 
   created_at: timestamp
   updated_at: timestamp
@@ -113,11 +113,13 @@
   activity_site_support: boolean
   created_at: timestamp (활동일)
   created_by: string
+  updated_by: string
 }
 ```
 
 ### 6. sales_activities (영업 활동)
 **용도**: 견적/수주 활동 기록
+**최근 변경**: created_by 지점 구분 지원
 ```typescript
 {
   id: number
@@ -141,12 +143,14 @@
   execution_rate: number (실행률)
   attachments: string[] (첨부파일)
   created_at: timestamp
-  created_by: string
+  created_by: string (사용자명, 지점 구분: "이름" 또는 "이름(In)")
+  updated_by: string
 }
 ```
 
 ### 7. invoice_records (계산서 발행)
 **용도**: 계산서 발행 기록
+**최근 변경**: created_by 지점 구분 지원
 ```typescript
 {
   id: number
@@ -169,8 +173,110 @@
   invoice_amount: number (발행금액)
 
   created_at: timestamp
-  created_by: string
+  created_by: string (사용자명, 지점 구분: "이름" 또는 "이름(In)")
+  updated_by: string
 }
+```
+
+### 8. collections (수금 현황) ⭐ 신규
+**용도**: 수금 내역 관리
+**파일**: supabase-collections.sql
+```typescript
+{
+  id: number
+  user_id: string (UUID)
+  cms_id: number (현장 ID, nullable)
+  cms_code: string (CMS 코드)
+  site_name: string (현장명)
+  site_address: string (현장 주소)
+  sales_manager: string (영업 담당자)
+  construction_manager: string (시공 담당자)
+  collection_date: date (수금일)
+  collection_amount: number (수금 금액)
+  outstanding_balance: number (미수금 잔액, 자동 계산)
+  created_at: timestamp
+  updated_at: timestamp
+  created_by: string (사용자명, 지점 구분: "이름" 또는 "이름(In)")
+  updated_by: string
+}
+```
+
+**계산 로직**:
+```typescript
+// 미수금 잔액 = monthly_collection의 미수금 - 수금 금액
+outstanding_balance = monthlyOutstanding - collection_amount
+```
+
+**인덱스**:
+- idx_collections_user_id
+- idx_collections_cms_id
+- idx_collections_collection_date
+- idx_collections_created_by
+
+### 9. monthly_collection (월별 수금/미수금 현황) ⭐ 신규
+**용도**: 관리자 업로드 월별 수금/미수금 데이터
+**파일**: supabase-monthly-collection.sql
+```typescript
+{
+  id: UUID (Primary Key)
+  year: number (연도)
+  month: number (월, 1-12)
+  manager_name: string (담당자명, 지점 구분: "이름" 또는 "이름(In)")
+  collection_amount: number (확정 수금 금액)
+  outstanding_amount: number (미수금 현황)
+  created_at: timestamp
+  updated_at: timestamp
+  created_by: string (관리자명)
+
+  // 유니크 제약: (year, month, manager_name)
+}
+```
+
+**인덱스**:
+- idx_monthly_collection_year_month
+- idx_monthly_collection_manager
+
+### 10. monthly_over_investment (월별 과투입 현황)
+**용도**: 관리자 업로드 월별 과투입 데이터
+```typescript
+{
+  id: UUID
+  year: number
+  month: number
+  manager_name: string
+  amount: number (과투입 금액)
+  created_at: timestamp
+  updated_at: timestamp
+  created_by: string
+
+  // 유니크 제약: (year, month, manager_name)
+}
+```
+
+## 다중 지점 사용자 패턴 ⭐
+
+### created_by 필드의 지점 구분
+특정 사용자(송기정, 김태현)는 본점과 인천 지점을 구분하여 관리:
+- **본점**: "송기정", "김태현"
+- **인천**: "송기정(In)", "김태현(In)"
+
+### 적용 테이블
+- sales_activities
+- invoice_records
+- collections
+- weekly_plans
+- daily_plans
+- monthly_collection (manager_name 필드)
+- monthly_over_investment (manager_name 필드)
+
+### 쿼리 패턴
+```typescript
+// 단일 지점 조회
+.eq('created_by', '송기정')        // 본점만
+.eq('created_by', '송기정(In)')    // 인천만
+
+// 전체 지점 조회
+.or('created_by.eq."송기정",created_by.eq."송기정(In)"')
 ```
 
 ## 데이터 관계
@@ -200,8 +306,15 @@
 - **그룹**: 월별
 
 #### 원가 투입 효율 (cost-efficiency-stats.ts)
-- **과투입**: site_summary (매출 - 매입 < 0)
-- **확정 매출**: site_summary
+- **과투입**: monthly_over_investment
+- **확정 매출**: inpays (sales_date 기준)
+- **그룹**: 월별
+
+#### 수금 실적 및 미수금 관리 (collection-stats.ts) ⭐ 신규
+- **목표 수금**: weekly_plans.target_collection (created_at 기준)
+- **사용자 수금**: collections.collection_amount
+- **관리자 확정 수금**: monthly_collection.collection_amount
+- **현재 미수금 누계**: monthly_collection.outstanding_amount
 - **그룹**: 월별
 
 ## 중요 쿼리 패턴
@@ -227,6 +340,18 @@
 .lt('created_at', nextMonthDate)
 ```
 
+### 다중 지점 조회
+```typescript
+// showAllBranches = true
+const isMultiBranch = userName === '송기정' || userName === '김태현';
+if (isMultiBranch && showAllBranches) {
+  const orCondition = `created_by.eq."${userName}",created_by.eq."${userName}(In)"`;
+  query = query.or(orCondition);
+} else {
+  query = query.eq('created_by', userName);
+}
+```
+
 ## 마이그레이션 파일
 
 ### supabase-weekly-plans-add-plan-type.sql
@@ -236,7 +361,19 @@
 - 기존 레코드 자동 분류
 
 ### supabase-weekly-plans-add-targets.sql
+- target_sales
 - target_order_sales_contribution
 - target_order_profit_contribution
 - target_order_total
-- 컬럼 추가
+- target_collection
+- 컬럼 추가 및 자동 계산 트리거
+
+### supabase-collections.sql ⭐ 신규
+- collections 테이블 생성
+- 수금 기록 관리
+- created_by 인덱스 (지점 구분 지원)
+
+### supabase-monthly-collection.sql ⭐ 신규
+- monthly_collection 테이블 생성
+- 관리자 업로드 수금/미수금 데이터
+- (year, month, manager_name) 유니크 제약
