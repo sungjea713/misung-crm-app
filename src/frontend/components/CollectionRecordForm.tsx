@@ -235,7 +235,7 @@ export function CollectionRecordForm({ user, record, onClose, onSave, onDelete }
             목록으로
           </button>
           <h2 className="text-2xl font-bold text-white">
-            {isEdit ? '수금 관리 수정' : '수금 관리 등록'}
+            {isEdit ? '수금 내역 수정' : '수금 내역 등록'}
           </h2>
         </div>
       </div>
@@ -309,13 +309,8 @@ export function CollectionRecordForm({ user, record, onClose, onSave, onDelete }
 
           {/* 현장 검색 */}
           <div className="mb-6">
-            <label className="block text-sm font-medium text-white mb-2">
-              현장 검색 *
-            </label>
             <SiteSearchInput
-              value={formData.cms_code || ''}
               onSelect={handleSiteSelect}
-              placeholder="CMS 코드 또는 현장명으로 검색"
             />
           </div>
 
