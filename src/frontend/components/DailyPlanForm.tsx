@@ -275,61 +275,6 @@ export function DailyPlanForm({ user, plan, onClose, onSave, onDelete }: DailyPl
           )}
         </div>
 
-        {/* 현장 검색 */}
-        <div className="card space-y-4">
-          <h3 className="text-lg font-semibold text-white border-b border-gray-border pb-3">
-            현장 정보
-          </h3>
-
-          <SiteSearchInput onSelect={handleSiteSelect} disabled={loading} />
-
-          {/* 선택된 현장 정보 (읽기 전용) */}
-          {(formData.cms_id || formData.cms_code || formData.site_name) && (
-            <div className="bg-gradient-to-br from-primary from-opacity-5 to-bg-darker p-5 rounded-xl border-2 border-primary border-opacity-30 shadow-lg">
-              <div className="flex items-center mb-4">
-                <div className="w-2 h-2 bg-primary rounded-full mr-2 animate-pulse"></div>
-                <span className="text-xs font-semibold text-primary uppercase tracking-wide">선택된 현장</span>
-              </div>
-              <div className="space-y-4">
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div className="bg-bg-card bg-opacity-50 p-3 rounded-lg">
-                    <label className="block text-xs font-medium text-primary mb-1.5">
-                      CMS 코드
-                    </label>
-                    <div className="text-base font-semibold text-white">{formData.cms_code}</div>
-                  </div>
-                  <div className="bg-bg-card bg-opacity-50 p-3 rounded-lg">
-                    <label className="block text-xs font-medium text-primary mb-1.5">
-                      현장명
-                    </label>
-                    <div className="text-base font-semibold text-white">{formData.site_name}</div>
-                  </div>
-                </div>
-                <div className="bg-bg-card bg-opacity-50 p-3 rounded-lg">
-                  <label className="block text-xs font-medium text-primary mb-1.5">
-                    현장 주소
-                  </label>
-                  <div className="text-sm text-white">{formData.site_address}</div>
-                </div>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div className="bg-bg-card bg-opacity-50 p-3 rounded-lg">
-                    <label className="block text-xs font-medium text-primary mb-1.5">
-                      영업 담당
-                    </label>
-                    <div className="text-sm text-white">{formData.sales_manager || '-'}</div>
-                  </div>
-                  <div className="bg-bg-card bg-opacity-50 p-3 rounded-lg">
-                    <label className="block text-xs font-medium text-primary mb-1.5">
-                      시공 담당
-                    </label>
-                    <div className="text-sm text-white">{formData.construction_manager || '-'}</div>
-                  </div>
-                </div>
-              </div>
-            </div>
-          )}
-        </div>
-
         {/* 활동 구분 */}
         <div className="card space-y-4">
           <h3 className="text-lg font-semibold text-white border-b border-gray-border pb-3">
@@ -444,6 +389,61 @@ export function DailyPlanForm({ user, plan, onClose, onSave, onDelete }: DailyPl
               </div>
             </label>
           </div>
+        </div>
+
+        {/* 현장 검색 */}
+        <div className="card space-y-4">
+          <h3 className="text-lg font-semibold text-white border-b border-gray-border pb-3">
+            현장 정보
+          </h3>
+
+          <SiteSearchInput onSelect={handleSiteSelect} disabled={loading} />
+
+          {/* 선택된 현장 정보 (읽기 전용) */}
+          {(formData.cms_id || formData.cms_code || formData.site_name) && (
+            <div className="bg-gradient-to-br from-primary from-opacity-5 to-bg-darker p-5 rounded-xl border-2 border-primary border-opacity-30 shadow-lg">
+              <div className="flex items-center mb-4">
+                <div className="w-2 h-2 bg-primary rounded-full mr-2 animate-pulse"></div>
+                <span className="text-xs font-semibold text-primary uppercase tracking-wide">선택된 현장</span>
+              </div>
+              <div className="space-y-4">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div className="bg-bg-card bg-opacity-50 p-3 rounded-lg">
+                    <label className="block text-xs font-medium text-primary mb-1.5">
+                      CMS 코드
+                    </label>
+                    <div className="text-base font-semibold text-white">{formData.cms_code}</div>
+                  </div>
+                  <div className="bg-bg-card bg-opacity-50 p-3 rounded-lg">
+                    <label className="block text-xs font-medium text-primary mb-1.5">
+                      현장명
+                    </label>
+                    <div className="text-base font-semibold text-white">{formData.site_name}</div>
+                  </div>
+                </div>
+                <div className="bg-bg-card bg-opacity-50 p-3 rounded-lg">
+                  <label className="block text-xs font-medium text-primary mb-1.5">
+                    현장 주소
+                  </label>
+                  <div className="text-sm text-white">{formData.site_address}</div>
+                </div>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div className="bg-bg-card bg-opacity-50 p-3 rounded-lg">
+                    <label className="block text-xs font-medium text-primary mb-1.5">
+                      영업 담당
+                    </label>
+                    <div className="text-sm text-white">{formData.sales_manager || '-'}</div>
+                  </div>
+                  <div className="bg-bg-card bg-opacity-50 p-3 rounded-lg">
+                    <label className="block text-xs font-medium text-primary mb-1.5">
+                      시공 담당
+                    </label>
+                    <div className="text-sm text-white">{formData.construction_manager || '-'}</div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
         </div>
 
         {/* 액션 버튼 */}
