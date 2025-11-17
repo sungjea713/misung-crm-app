@@ -241,8 +241,9 @@ export async function updateSalesActivity(
       return { success: false, message: '영업 활동을 찾을 수 없습니다.' };
     }
 
-    if (userRole === 'user' && existing.user_id !== userId) {
-      return { success: false, message: '권한이 없습니다.' };
+    // Only admin can update
+    if (userRole !== 'admin') {
+      return { success: false, message: '수정 권한이 없습니다. 관리자만 수정할 수 있습니다.' };
     }
 
     // Clean up removed images from storage
@@ -344,8 +345,9 @@ export async function deleteSalesActivity(id: number, userRole: string, userId: 
       return { success: false, message: '영업 활동을 찾을 수 없습니다.' };
     }
 
-    if (userRole === 'user' && existing.user_id !== userId) {
-      return { success: false, message: '권한이 없습니다.' };
+    // Only admin can delete
+    if (userRole !== 'admin') {
+      return { success: false, message: '삭제 권한이 없습니다. 관리자만 삭제할 수 있습니다.' };
     }
 
     // Clean up images from storage before deleting the record

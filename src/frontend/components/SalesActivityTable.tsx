@@ -86,8 +86,10 @@ export function SalesActivityTable({ activities, user, onEdit, onDelete }: Sales
           {activities.map((activity) => (
             <tr
               key={activity.id}
-              onClick={() => onEdit(activity)}
-              className="border-b border-gray-border hover:bg-bg-card transition-colors cursor-pointer"
+              onClick={() => user.role === 'admin' && onEdit(activity)}
+              className={`border-b border-gray-border transition-colors ${
+                user.role === 'admin' ? 'hover:bg-bg-card cursor-pointer' : 'cursor-default'
+              }`}
             >
               <td className="px-4 py-4 text-sm text-white whitespace-nowrap">
                 {formatDate(activity.activity_date)}
@@ -138,7 +140,7 @@ export function SalesActivityTable({ activities, user, onEdit, onDelete }: Sales
               )}
               <td className="px-4 py-4 text-sm" onClick={(e) => e.stopPropagation()}>
                 <div className="flex items-center justify-center gap-2">
-                  {(user.role === 'admin' || activity.user_id === user.id) && (
+                  {user.role === 'admin' && (
                     <button
                       onClick={() => onDelete(activity.id)}
                       className="p-1.5 hover:bg-red-500/10 text-red-400 rounded transition-colors"
