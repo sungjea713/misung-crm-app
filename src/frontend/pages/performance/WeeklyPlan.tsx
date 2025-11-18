@@ -162,14 +162,33 @@ export default function WeeklyPlanPage({ user }: WeeklyPlanPageProps) {
     setEditingPlan(undefined);
   };
 
-  const handleEdit = (plan: WeeklyPlan) => {
-    setEditingPlan(plan);
-    // plan_type에 따라 올바른 폼 모드 설정
-    if (plan.plan_type === 'target') {
-      setViewMode('target-form');
-    } else {
-      // 'activity' 또는 'both'인 경우 activity-form으로
-      setViewMode('activity-form');
+  const handleEdit = async (plan: WeeklyPlan) => {
+    setLoading(true);
+    try {
+      // 편집 시 서버에서 상세 정보를 다시 조회
+      const token = localStorage.getItem('crm_token');
+      const response = await fetch(`/api/weekly-plans/${plan.id}`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+
+      const data = await response.json();
+      if (data.success) {
+        setEditingPlan(data.data);
+        // plan_type에 따라 올바른 폼 모드 설정
+        if (data.data.plan_type === 'target') {
+          setViewMode('target-form');
+        } else {
+          // 'activity' 또는 'both'인 경우 activity-form으로
+          setViewMode('activity-form');
+        }
+      } else {
+        setError(data.message || '데이터를 불러오는데 실패했습니다.');
+      }
+    } catch (error) {
+      console.error('Error fetching plan details:', error);
+      setError('데이터를 불러오는데 실패했습니다.');
+    } finally {
+      setLoading(false);
     }
   };
 

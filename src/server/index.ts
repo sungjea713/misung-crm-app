@@ -18,6 +18,13 @@ import {
   deleteDailyPlan,
   getAllUsers as getAllUsersForDaily,
 } from './daily-plans';
+import {
+  getConstructions,
+  getItems,
+  getConstructionSalesDetails,
+  upsertConstructionSalesDetails,
+  deleteConstructionSalesDetails,
+} from './construction-sales';
 import { getActivityStats } from './activity-stats';
 import { getSalesStats } from './sales-stats';
 import { getOrderStats } from './order-stats';
@@ -295,6 +302,81 @@ const server = Bun.serve({
         const id = parseInt(pathname.split('/').pop()!);
         const result = await deleteDailyPlan(id, user.user.id, user.user.role);
         return Response.json(result, { status: result.success ? 200 : 400 });
+      }
+
+      // Construction Sales API Routes
+      if (pathname === '/api/constructions' && req.method === 'GET') {
+        const token = req.headers.get('Authorization')?.replace('Bearer ', '');
+        if (!token) {
+          return Response.json({ success: false, message: 'Unauthorized' }, { status: 401 });
+        }
+
+        try {
+          const data = await getConstructions();
+          return Response.json({ success: true, data }, { status: 200 });
+        } catch (error: any) {
+          return Response.json({ success: false, message: error.message }, { status: 400 });
+        }
+      }
+
+      if (pathname === '/api/items' && req.method === 'GET') {
+        const token = req.headers.get('Authorization')?.replace('Bearer ', '');
+        if (!token) {
+          return Response.json({ success: false, message: 'Unauthorized' }, { status: 401 });
+        }
+
+        try {
+          const data = await getItems();
+          return Response.json({ success: true, data }, { status: 200 });
+        } catch (error: any) {
+          return Response.json({ success: false, message: error.message }, { status: 400 });
+        }
+      }
+
+      if (pathname.match(/^\/api\/daily-plans\/\d+\/construction-sales$/) && req.method === 'GET') {
+        const token = req.headers.get('Authorization')?.replace('Bearer ', '');
+        if (!token) {
+          return Response.json({ success: false, message: 'Unauthorized' }, { status: 401 });
+        }
+
+        const id = parseInt(pathname.split('/')[3]);
+        try {
+          const data = await getConstructionSalesDetails(id);
+          return Response.json({ success: true, data }, { status: 200 });
+        } catch (error: any) {
+          return Response.json({ success: false, message: error.message }, { status: 400 });
+        }
+      }
+
+      if (pathname.match(/^\/api\/daily-plans\/\d+\/construction-sales$/) && req.method === 'POST') {
+        const token = req.headers.get('Authorization')?.replace('Bearer ', '');
+        if (!token) {
+          return Response.json({ success: false, message: 'Unauthorized' }, { status: 401 });
+        }
+
+        const id = parseInt(pathname.split('/')[3]);
+        const body = await req.json();
+        try {
+          const data = await upsertConstructionSalesDetails(id, body);
+          return Response.json({ success: true, data }, { status: 200 });
+        } catch (error: any) {
+          return Response.json({ success: false, message: error.message }, { status: 400 });
+        }
+      }
+
+      if (pathname.match(/^\/api\/daily-plans\/\d+\/construction-sales$/) && req.method === 'DELETE') {
+        const token = req.headers.get('Authorization')?.replace('Bearer ', '');
+        if (!token) {
+          return Response.json({ success: false, message: 'Unauthorized' }, { status: 401 });
+        }
+
+        const id = parseInt(pathname.split('/')[3]);
+        try {
+          await deleteConstructionSalesDetails(id);
+          return Response.json({ success: true }, { status: 200 });
+        } catch (error: any) {
+          return Response.json({ success: false, message: error.message }, { status: 400 });
+        }
       }
 
       // Activity Stats API Route

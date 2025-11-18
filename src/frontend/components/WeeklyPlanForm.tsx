@@ -113,10 +113,34 @@ export function WeeklyPlanForm({ user, plan, onClose, onSave, onDelete, formType
   };
 
   const handleCheckboxChange = (field: keyof WeeklyPlanFormData) => {
-    setFormData({
+    const newValue = !formData[field];
+
+    // 다른 활동 구분 체크박스 처리
+    const updatedFormData = {
       ...formData,
-      [field]: !formData[field],
-    });
+      [field]: newValue,
+    };
+
+    // 현장 추가 영업과 현장 지원이 모두 해제되면 현장 정보 초기화
+    if (field === 'activity_site_additional_sales' || field === 'activity_site_support') {
+      if (!newValue) {
+        const otherField = field === 'activity_site_additional_sales'
+          ? 'activity_site_support'
+          : 'activity_site_additional_sales';
+
+        // 둘 다 false인 경우 현장 정보 초기화
+        if (!updatedFormData[otherField]) {
+          updatedFormData.cms_id = undefined;
+          updatedFormData.cms_code = '';
+          updatedFormData.site_name = '';
+          updatedFormData.site_address = '';
+          updatedFormData.sales_manager = '';
+          updatedFormData.construction_manager = '';
+        }
+      }
+    }
+
+    setFormData(updatedFormData);
   };
 
   // 목표 금액 입력 처리 (천 단위 콤마 표시)
@@ -157,12 +181,6 @@ export function WeeklyPlanForm({ user, plan, onClose, onSave, onDelete, formType
 
     // formType에 따른 유효성 검사
     if (formType === 'activity') {
-      // 활동 계획: 현장 정보 필수
-      if (!formData.cms_id && !formData.cms_code && !formData.site_name) {
-        setError('현장을 선택해주세요.');
-        return;
-      }
-
       // 활동 구분 필수
       if (
         !formData.activity_construction_sales &&
@@ -170,6 +188,15 @@ export function WeeklyPlanForm({ user, plan, onClose, onSave, onDelete, formType
         !formData.activity_site_support
       ) {
         setError('최소 하나의 활동 구분을 선택해주세요.');
+        return;
+      }
+
+      // 건설사 영업이 아닌 다른 활동이 선택된 경우에만 현장 정보 필수
+      if (
+        (formData.activity_site_additional_sales || formData.activity_site_support) &&
+        !formData.cms_id && !formData.cms_code && !formData.site_name
+      ) {
+        setError('현장 추가 영업 또는 현장 지원을 선택한 경우 현장을 선택해주세요.');
         return;
       }
     } else {
@@ -469,8 +496,8 @@ export function WeeklyPlanForm({ user, plan, onClose, onSave, onDelete, formType
           </div>
         )}
 
-        {/* 현장 검색 (활동 계획일 때만) */}
-        {formType === 'activity' && (
+        {/* 현장 검색 (활동 계획이고 현장 추가 영업 또는 현장 지원이 체크된 경우에만) */}
+        {formType === 'activity' && (formData.activity_site_additional_sales || formData.activity_site_support) && (
           <div className="card space-y-4">
             <h3 className="text-lg font-semibold text-white border-b border-gray-border pb-3">
               현장 정보
@@ -480,7 +507,7 @@ export function WeeklyPlanForm({ user, plan, onClose, onSave, onDelete, formType
 
             {/* 선택된 현장 정보 (읽기 전용) */}
             {(formData.cms_id || formData.cms_code || formData.site_name) && (
-              <div className="bg-gradient-to-br from-primary from-opacity-5 to-bg-darker p-5 rounded-xl border-2 border-primary border-opacity-30 shadow-lg">
+              <div className="bg-gradient-to-br from-green-900/10 to-bg-darker p-5 rounded-xl border-2 border-green-600/20 shadow-lg">
                 <div className="flex items-center mb-4">
                   <div className="w-2 h-2 bg-primary rounded-full mr-2 animate-pulse"></div>
                   <span className="text-xs font-semibold text-primary uppercase tracking-wide">선택된 현장</span>

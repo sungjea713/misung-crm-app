@@ -1,7 +1,8 @@
 import React, { useState, useEffect } from 'react';
-import { ArrowLeft, Save, Trash2 } from 'lucide-react';
+import { ArrowLeft, Save, Trash2, Edit2, Building2 } from 'lucide-react';
 import { SiteSearchInput } from './SiteSearchInput';
-import type { User, ConstructionSite, DailyPlan, DailyPlanFormData } from '../types';
+import ConstructionSalesModal from './ConstructionSalesModal';
+import type { User, ConstructionSite, DailyPlan, DailyPlanFormData, ConstructionSalesDetail } from '../types';
 
 interface DailyPlanFormProps {
   user: User;
@@ -41,7 +42,12 @@ export function DailyPlanForm({ user, plan, onClose, onSave, onDelete }: DailyPl
     activity_construction_sales: plan?.activity_construction_sales || false,
     activity_site_additional_sales: plan?.activity_site_additional_sales || false,
     activity_site_support: plan?.activity_site_support || false,
+    construction_sales_details: plan?.construction_sales_details || undefined,
   });
+
+  // 건설사 영업 모달 상태
+  const [showConstructionSalesModal, setShowConstructionSalesModal] = useState(false);
+  const [constructionSalesDetail, setConstructionSalesDetail] = useState<ConstructionSalesDetail | undefined>(undefined);
 
   // Update formData when plan prop changes (for edit mode)
   useEffect(() => {
@@ -56,11 +62,17 @@ export function DailyPlanForm({ user, plan, onClose, onSave, onDelete }: DailyPl
         activity_construction_sales: plan.activity_construction_sales || false,
         activity_site_additional_sales: plan.activity_site_additional_sales || false,
         activity_site_support: plan.activity_site_support || false,
+        construction_sales_details: plan.construction_sales_details || undefined,
       });
 
       // Update selected branch based on created_by suffix
       if (isMultiBranchUser) {
         setSelectedBranch(plan.created_by?.includes('(In)') ? '인천' : '본점');
+      }
+
+      // 건설사 영업 상세 정보 설정
+      if (plan.construction_sales_details && plan.construction_sales_details.length > 0) {
+        setConstructionSalesDetail(plan.construction_sales_details[0]);
       }
     } else {
       // Reset form for new entry
@@ -74,12 +86,16 @@ export function DailyPlanForm({ user, plan, onClose, onSave, onDelete }: DailyPl
         activity_construction_sales: false,
         activity_site_additional_sales: false,
         activity_site_support: false,
+        construction_sales_details: undefined,
       });
 
       // Reset branch to default for new entry
       if (isMultiBranchUser) {
         setSelectedBranch(user.branch || '인천');
       }
+
+      // 건설사 영업 상세 정보 초기화
+      setConstructionSalesDetail(undefined);
     }
   }, [plan, isMultiBranchUser, user.branch]);
 
@@ -97,28 +113,97 @@ export function DailyPlanForm({ user, plan, onClose, onSave, onDelete }: DailyPl
   };
 
   const handleCheckboxChange = (field: keyof DailyPlanFormData) => {
+    const newValue = !formData[field];
+
+    // 건설사 영업 체크박스 처리
+    if (field === 'activity_construction_sales') {
+      if (newValue) {
+        // 체크 시 모달 열기
+        setShowConstructionSalesModal(true);
+      } else {
+        // 체크 해제 시 상세 정보 삭제
+        setConstructionSalesDetail(undefined);
+        setFormData({
+          ...formData,
+          [field]: newValue,
+          construction_sales_details: undefined,
+        });
+        return;
+      }
+    }
+
+    // 다른 활동 구분 체크박스 처리
+    const updatedFormData = {
+      ...formData,
+      [field]: newValue,
+    };
+
+    // 현장 추가 영업과 현장 지원이 모두 해제되면 현장 정보 초기화
+    if (field === 'activity_site_additional_sales' || field === 'activity_site_support') {
+      if (!newValue) {
+        const otherField = field === 'activity_site_additional_sales'
+          ? 'activity_site_support'
+          : 'activity_site_additional_sales';
+
+        // 둘 다 false인 경우 현장 정보 초기화
+        if (!updatedFormData[otherField]) {
+          updatedFormData.cms_id = undefined;
+          updatedFormData.cms_code = '';
+          updatedFormData.site_name = '';
+          updatedFormData.site_address = '';
+          updatedFormData.sales_manager = '';
+          updatedFormData.construction_manager = '';
+        }
+      }
+    }
+
+    setFormData(updatedFormData);
+  };
+
+  // 건설사 영업 상세 정보 저장
+  const handleConstructionSalesDetailSave = (detail: ConstructionSalesDetail) => {
+    setConstructionSalesDetail(detail);
     setFormData({
       ...formData,
-      [field]: !formData[field],
+      activity_construction_sales: true,
+      construction_sales_details: [detail],
     });
+    setShowConstructionSalesModal(false);
+  };
+
+  // 건설사 영업 모달 닫기 (취소)
+  const handleConstructionSalesModalClose = () => {
+    // 상세 정보가 없으면 체크 해제
+    if (!constructionSalesDetail) {
+      setFormData({
+        ...formData,
+        activity_construction_sales: false,
+        construction_sales_details: undefined,
+      });
+    }
+    setShowConstructionSalesModal(false);
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError('');
 
-    // 유효성 검사 - cms_id 또는 cms_code와 site_name이 있어야 함
-    if (!formData.cms_id && !formData.cms_code && !formData.site_name) {
-      setError('현장을 선택해주세요.');
-      return;
-    }
-
+    // 활동 구분 체크 확인
     if (
       !formData.activity_construction_sales &&
       !formData.activity_site_additional_sales &&
       !formData.activity_site_support
     ) {
       setError('최소 하나의 활동 구분을 선택해주세요.');
+      return;
+    }
+
+    // 건설사 영업이 아닌 다른 활동이 선택된 경우에만 현장 정보 필수
+    if (
+      (formData.activity_site_additional_sales || formData.activity_site_support) &&
+      !formData.cms_id && !formData.cms_code && !formData.site_name
+    ) {
+      setError('현장 추가 영업 또는 현장 지원을 선택한 경우 현장을 선택해주세요.');
       return;
     }
 
@@ -391,17 +476,74 @@ export function DailyPlanForm({ user, plan, onClose, onSave, onDelete }: DailyPl
           </div>
         </div>
 
-        {/* 현장 검색 */}
-        <div className="card space-y-4">
-          <h3 className="text-lg font-semibold text-white border-b border-gray-border pb-3">
-            현장 정보
-          </h3>
+        {/* 건설사 영업 상세 정보 (건설사 영업이 체크되고 상세 정보가 있을 때만 표시) */}
+        {formData.activity_construction_sales && constructionSalesDetail && (
+          <div className="card space-y-4">
+            <div className="flex items-center justify-between border-b border-gray-border pb-3">
+              <h3 className="text-lg font-semibold text-white flex items-center">
+                <Building2 className="h-5 w-5 mr-2 text-primary" />
+                건설사 영업 정보
+              </h3>
+              <button
+                type="button"
+                onClick={() => setShowConstructionSalesModal(true)}
+                disabled={loading}
+                className="btn-secondary flex items-center space-x-2 text-sm"
+              >
+                <Edit2 className="h-4 w-4" />
+                <span>편집</span>
+              </button>
+            </div>
 
-          <SiteSearchInput onSelect={handleSiteSelect} disabled={loading} />
+            <div className="bg-gradient-to-br from-blue-900/20 to-bg-darker p-4 rounded-lg border border-blue-500/30">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-xs font-medium text-gray-text mb-1">건설사</label>
+                  <div className="text-white font-medium">
+                    {constructionSalesDetail.construction?.company_name || ''}
+                  </div>
+                </div>
+                <div>
+                  <label className="block text-xs font-medium text-gray-text mb-1">품목</label>
+                  <div className="text-white font-medium">
+                    {constructionSalesDetail.item?.item_id} - {constructionSalesDetail.item?.item_name || ''}
+                  </div>
+                </div>
+                <div>
+                  <label className="block text-xs font-medium text-gray-text mb-1">활동 내역</label>
+                  <div className="flex space-x-3">
+                    {constructionSalesDetail.has_quote_submitted && (
+                      <span className="text-xs bg-blue-500/20 text-blue-400 px-2 py-1 rounded">
+                        견적 제출
+                      </span>
+                    )}
+                    {constructionSalesDetail.has_meeting_conducted && (
+                      <span className="text-xs bg-blue-500/20 text-blue-400 px-2 py-1 rounded">
+                        미팅 진행
+                      </span>
+                    )}
+                    {!constructionSalesDetail.has_quote_submitted && !constructionSalesDetail.has_meeting_conducted && (
+                      <span className="text-xs text-gray-text">-</span>
+                    )}
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* 현장 검색 - 현장 추가 영업 또는 현장 지원이 체크된 경우에만 표시 */}
+        {(formData.activity_site_additional_sales || formData.activity_site_support) && (
+          <div className="card space-y-4">
+            <h3 className="text-lg font-semibold text-white border-b border-gray-border pb-3">
+              현장 정보
+            </h3>
+
+            <SiteSearchInput onSelect={handleSiteSelect} disabled={loading} />
 
           {/* 선택된 현장 정보 (읽기 전용) */}
           {(formData.cms_id || formData.cms_code || formData.site_name) && (
-            <div className="bg-gradient-to-br from-primary from-opacity-5 to-bg-darker p-5 rounded-xl border-2 border-primary border-opacity-30 shadow-lg">
+            <div className="bg-gradient-to-br from-green-900/10 to-bg-darker p-5 rounded-xl border-2 border-green-600/20 shadow-lg">
               <div className="flex items-center mb-4">
                 <div className="w-2 h-2 bg-primary rounded-full mr-2 animate-pulse"></div>
                 <span className="text-xs font-semibold text-primary uppercase tracking-wide">선택된 현장</span>
@@ -444,7 +586,8 @@ export function DailyPlanForm({ user, plan, onClose, onSave, onDelete }: DailyPl
               </div>
             </div>
           )}
-        </div>
+          </div>
+        )}
 
         {/* 액션 버튼 */}
         <div className="card">
@@ -500,6 +643,14 @@ export function DailyPlanForm({ user, plan, onClose, onSave, onDelete }: DailyPl
           </div>
         </div>
       )}
+
+      {/* 건설사 영업 상세 정보 모달 */}
+      <ConstructionSalesModal
+        isOpen={showConstructionSalesModal}
+        onClose={handleConstructionSalesModalClose}
+        onSave={handleConstructionSalesDetailSave}
+        initialDetails={constructionSalesDetail}
+      />
     </div>
   );
 }

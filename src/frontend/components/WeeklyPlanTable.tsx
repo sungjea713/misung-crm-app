@@ -35,7 +35,7 @@ export function WeeklyPlanTable({ plans, onEdit, pagination, onPageChange, showO
 
   const getActivityBadges = (plan: WeeklyPlan) => {
     const activities = [];
-    if (plan.activity_construction_sales) activities.push('시공 영업');
+    if (plan.activity_construction_sales) activities.push('건설사 영업');
     if (plan.activity_site_additional_sales) activities.push('현장 추가 영업');
     if (plan.activity_site_support) activities.push('현장 지원');
     return activities;

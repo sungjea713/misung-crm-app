@@ -28,9 +28,25 @@ export function DailyPlanTable({ plans, onEdit, pagination, onPageChange }: Dail
 
   const getActivityBadges = (plan: DailyPlan) => {
     const activities = [];
-    if (plan.activity_construction_sales) activities.push('건설사 영업');
-    if (plan.activity_site_additional_sales) activities.push('현장 추가 영업');
-    if (plan.activity_site_support) activities.push('현장 지원');
+    if (plan.activity_construction_sales) {
+      const detailCount = plan.construction_sales_details?.length || 0;
+      activities.push({
+        name: '건설사 영업',
+        detail: detailCount > 0 ? `(${detailCount}건)` : ''
+      });
+    }
+    if (plan.activity_site_additional_sales) {
+      activities.push({
+        name: '현장 추가 영업',
+        detail: ''
+      });
+    }
+    if (plan.activity_site_support) {
+      activities.push({
+        name: '현장 지원',
+        detail: ''
+      });
+    }
     return activities;
   };
 
@@ -89,10 +105,14 @@ export function DailyPlanTable({ plans, onEdit, pagination, onPageChange }: Dail
                   <div className="flex flex-wrap gap-1">
                     {getActivityBadges(plan).map((activity) => (
                       <span
-                        key={activity}
-                        className="px-2 py-1 bg-primary bg-opacity-20 text-primary text-xs rounded"
+                        key={activity.name}
+                        className="px-2 py-1 bg-primary bg-opacity-20 text-primary text-xs rounded inline-flex items-center"
+                        title={activity.detail ? `${activity.name} ${activity.detail}` : activity.name}
                       >
-                        {activity}
+                        {activity.name}
+                        {activity.detail && (
+                          <span className="ml-1 font-semibold">{activity.detail}</span>
+                        )}
                       </span>
                     ))}
                   </div>

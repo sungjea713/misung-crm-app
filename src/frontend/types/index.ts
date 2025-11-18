@@ -116,6 +116,35 @@ export interface WeeklyPlanFilters {
   limit?: number;
 }
 
+// Construction Sales Types
+export interface Construction {
+  id: number;
+  company_name: string;
+  created_at?: string;
+  updated_at?: string;
+}
+
+export interface Item {
+  id: number;
+  item_id: string;
+  item_name: string;
+  created_at?: string;
+  updated_at?: string;
+}
+
+export interface ConstructionSalesDetail {
+  id?: number;
+  daily_plan_id?: number;
+  construction_id: number;
+  item_id: number;
+  has_quote_submitted: boolean;
+  has_meeting_conducted: boolean;
+  construction?: Construction;
+  item?: Item;
+  created_at?: string;
+  updated_at?: string;
+}
+
 // Daily Plan Types
 export interface DailyPlan {
   id: number;
@@ -129,6 +158,7 @@ export interface DailyPlan {
   activity_construction_sales: boolean;
   activity_site_additional_sales: boolean;
   activity_site_support: boolean;
+  construction_sales_details?: ConstructionSalesDetail[];
   created_at: string;
   updated_at: string;
   created_by: string;
@@ -145,6 +175,7 @@ export interface DailyPlanFormData {
   activity_construction_sales: boolean;
   activity_site_additional_sales: boolean;
   activity_site_support: boolean;
+  construction_sales_details?: ConstructionSalesDetail[];
 }
 
 export interface DailyPlanFilters {

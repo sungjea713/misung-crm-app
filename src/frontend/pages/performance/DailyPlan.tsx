@@ -162,9 +162,28 @@ export default function DailyPlanPage({ user }: DailyPlanPageProps) {
     setEditingPlan(undefined);
   };
 
-  const handleEdit = (plan: DailyPlan) => {
-    setEditingPlan(plan);
-    setViewMode('form');
+  const handleEdit = async (plan: DailyPlan) => {
+    setLoading(true);
+    try {
+      // 편집 시 서버에서 상세 정보를 다시 조회
+      const token = localStorage.getItem('crm_token');
+      const response = await fetch(`/api/daily-plans/${plan.id}`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+
+      const data = await response.json();
+      if (data.success) {
+        setEditingPlan(data.data);
+        setViewMode('form');
+      } else {
+        setError(data.message || '데이터를 불러오는데 실패했습니다.');
+      }
+    } catch (error) {
+      console.error('Error fetching plan details:', error);
+      setError('데이터를 불러오는데 실패했습니다.');
+    } finally {
+      setLoading(false);
+    }
   };
 
   const handleCloseForm = () => {
