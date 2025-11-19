@@ -115,6 +115,12 @@ const menuItems: MenuItem[] = [
         icon: CreditCard,
         path: '/analytics/collection-status',
       },
+      {
+        id: 'construction-sales-score',
+        label: '건설사 영업 스코어',
+        icon: TrendingUp,
+        path: '/analytics/construction-sales-score',
+      },
     ],
   },
   {

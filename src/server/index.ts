@@ -25,6 +25,11 @@ import {
   upsertConstructionSalesDetails,
   deleteConstructionSalesDetails,
 } from './construction-sales';
+import {
+  getConstructionScoreStats,
+  getUserConstructionScoresByMonth,
+  getUserConstructionScoresByYear,
+} from './construction-score-stats';
 import { getActivityStats } from './activity-stats';
 import { getSalesStats } from './sales-stats';
 import { getOrderStats } from './order-stats';
@@ -374,6 +379,86 @@ const server = Bun.serve({
         try {
           await deleteConstructionSalesDetails(id);
           return Response.json({ success: true }, { status: 200 });
+        } catch (error: any) {
+          return Response.json({ success: false, message: error.message }, { status: 400 });
+        }
+      }
+
+      // Construction Score Stats API Route - Month
+      if (pathname === '/api/construction-score-stats/month' && req.method === 'GET') {
+        const token = req.headers.get('Authorization')?.replace('Bearer ', '');
+        if (!token) {
+          return Response.json({ success: false, message: 'Unauthorized' }, { status: 401 });
+        }
+
+        const year = url.searchParams.get('year');
+        const month = url.searchParams.get('month');
+        const userId = url.searchParams.get('user_id') || undefined;
+        const createdBy = url.searchParams.get('created_by') || undefined;
+
+        if (!year || !month) {
+          return Response.json({ success: false, message: 'Year and month are required' }, { status: 400 });
+        }
+
+        try {
+          const result = await getUserConstructionScoresByMonth(
+            userId || '',
+            parseInt(year),
+            parseInt(month),
+            createdBy
+          );
+          return Response.json(result, { status: result.success ? 200 : 400 });
+        } catch (error: any) {
+          return Response.json({ success: false, message: error.message }, { status: 400 });
+        }
+      }
+
+      // Construction Score Stats API Route - Year
+      if (pathname === '/api/construction-score-stats/year' && req.method === 'GET') {
+        const token = req.headers.get('Authorization')?.replace('Bearer ', '');
+        if (!token) {
+          return Response.json({ success: false, message: 'Unauthorized' }, { status: 401 });
+        }
+
+        const year = url.searchParams.get('year');
+        const userId = url.searchParams.get('user_id') || undefined;
+        const createdBy = url.searchParams.get('created_by') || undefined;
+
+        if (!year) {
+          return Response.json({ success: false, message: 'Year is required' }, { status: 400 });
+        }
+
+        try {
+          const result = await getUserConstructionScoresByYear(
+            userId || '',
+            parseInt(year),
+            createdBy
+          );
+          return Response.json(result, { status: result.success ? 200 : 400 });
+        } catch (error: any) {
+          return Response.json({ success: false, message: error.message }, { status: 400 });
+        }
+      }
+
+      // Construction Score Stats API Route - General
+      if (pathname === '/api/construction-score-stats' && req.method === 'GET') {
+        const token = req.headers.get('Authorization')?.replace('Bearer ', '');
+        if (!token) {
+          return Response.json({ success: false, message: 'Unauthorized' }, { status: 401 });
+        }
+
+        const startDate = url.searchParams.get('start_date');
+        const endDate = url.searchParams.get('end_date');
+        const userId = url.searchParams.get('user_id') || undefined;
+        const createdBy = url.searchParams.get('created_by') || undefined;
+
+        if (!startDate || !endDate) {
+          return Response.json({ success: false, message: 'Start date and end date are required' }, { status: 400 });
+        }
+
+        try {
+          const result = await getConstructionScoreStats(startDate, endDate, userId, createdBy);
+          return Response.json(result, { status: result.success ? 200 : 400 });
         } catch (error: any) {
           return Response.json({ success: false, message: error.message }, { status: 400 });
         }

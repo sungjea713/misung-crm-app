@@ -535,3 +535,40 @@ export interface CollectionStatsResponse {
   };
   message?: string;
 }
+
+// Construction Sales Score Types
+// 건설사+아이템 조합별 점수 정보
+export interface ConstructionItemScore {
+  construction_id: number;
+  construction_name: string;
+  item_id: number;
+  item_name: string;
+  quote_count: number;
+  quote_score: number;
+  meeting_count: number;
+  meeting_score: number;
+  recent_activity_date: string | null;
+  days_since_last_activity: number | null;
+  quote_activities: string[];  // 견적 제출 날짜 목록 (오름차순)
+  meeting_activities: string[];  // 미팅 진행 날짜 목록 (오름차순)
+}
+
+// 건설사별 통계 (순위 표시용)
+export interface ConstructionScoreStats {
+  construction_id: number;
+  construction_name: string;
+  total_activities: number;
+  item_scores: ConstructionItemScore[];  // 아이템별 점수 목록
+}
+
+export interface ConstructionScoreResponse {
+  success: boolean;
+  data?: {
+    scores: ConstructionScoreStats[];
+    summary: {
+      total_constructions: number;
+      total_activities: number;
+    };
+  };
+  message?: string;
+}

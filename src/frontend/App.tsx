@@ -14,6 +14,7 @@ import OrderAchievement from './pages/analytics/OrderAchievement';
 import CollectionStatus from './pages/analytics/CollectionStatus';
 import CostEfficiency from './pages/analytics/CostEfficiency';
 import ActivityStatus from './pages/analytics/ActivityStatus';
+import ConstructionSalesScore from './pages/analytics/ConstructionSalesScore';
 import ConfirmedCollection from './pages/admin/ConfirmedCollection';
 import OutstandingBalance from './pages/admin/OutstandingBalance';
 import MonthlyOverInvestment from './pages/analytics/MonthlyOverInvestment';
@@ -169,6 +170,8 @@ export default function App() {
         return <CostEfficiency user={user} />;
       case '/analytics/activity-status':
         return <ActivityStatus user={user} />;
+      case '/analytics/construction-sales-score':
+        return <ConstructionSalesScore user={user} />;
       case '/admin/over-investment':
         return user.role === 'admin' ? <MonthlyOverInvestment user={user} /> : <Dashboard user={user} />;
       case '/admin/monthly-collection':
