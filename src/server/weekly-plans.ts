@@ -1,4 +1,9 @@
 import { createClient } from '@supabase/supabase-js';
+import {
+  getWeeklyPlanConstructionSalesDetails,
+  upsertWeeklyPlanConstructionSalesDetails,
+  deleteWeeklyPlanConstructionSalesDetails
+} from './construction-sales';
 
 const supabaseUrl = process.env.SUPABASE_URL!;
 const supabaseKey = process.env.SUPABASE_ANON_KEY!;
@@ -94,7 +99,24 @@ export async function getWeeklyPlan(id: number) {
 
     if (error) throw error;
 
-    return { success: true, data };
+    // 건설사 영업 상세 정보 조회 (activity_construction_sales가 true인 경우에만)
+    let constructionSalesDetails = [];
+    if (data && data.activity_construction_sales) {
+      try {
+        constructionSalesDetails = await getWeeklyPlanConstructionSalesDetails(id);
+      } catch (detailError) {
+        console.error('Error fetching construction sales details:', detailError);
+        // 상세 정보 조회 실패는 치명적이지 않으므로 계속 진행
+      }
+    }
+
+    return {
+      success: true,
+      data: {
+        ...data,
+        construction_sales_details: constructionSalesDetails
+      }
+    };
   } catch (error: any) {
     console.error('Error fetching weekly plan:', error);
     return { success: false, message: error.message };
@@ -104,48 +126,51 @@ export async function getWeeklyPlan(id: number) {
 // 주간 계획 생성
 export async function createWeeklyPlan(planData: any, userId: string, userName: string) {
   try {
+    // 건설사 영업 상세 정보 분리
+    const { construction_sales_details, ...weeklyPlanData } = planData;
+
     // cms_id 안전장치: cms_id가 없거나 유효하지 않으면 cms_code로 찾기
-    if (planData.cms_id) {
+    if (weeklyPlanData.cms_id) {
       // cms_id가 있으면 검증
       const { data: siteExists, error: checkError } = await supabase
         .from('construction_management')
         .select('id')
-        .eq('id', planData.cms_id)
+        .eq('id', weeklyPlanData.cms_id)
         .single();
 
       if (checkError || !siteExists) {
-        console.error('Site not found by cms_id:', planData.cms_id);
-        planData.cms_id = null;
+        console.error('Site not found by cms_id:', weeklyPlanData.cms_id);
+        weeklyPlanData.cms_id = null;
       }
     }
 
     // cms_id가 없고 cms_code가 있으면 cms_code로 찾기
-    if (!planData.cms_id && planData.cms_code) {
-      console.log('Trying to find site by cms_code:', planData.cms_code);
+    if (!weeklyPlanData.cms_id && weeklyPlanData.cms_code) {
+      console.log('Trying to find site by cms_code:', weeklyPlanData.cms_code);
       const { data: sites, error: searchError } = await supabase
         .from('construction_management')
         .select('id, cms')
-        .eq('cms', planData.cms_code);
+        .eq('cms', weeklyPlanData.cms_code);
 
       if (!searchError && sites && sites.length > 0) {
-        planData.cms_id = sites[0].id;
-        console.log('Found site by cms_code, set cms_id to:', planData.cms_id);
+        weeklyPlanData.cms_id = sites[0].id;
+        console.log('Found site by cms_code, set cms_id to:', weeklyPlanData.cms_id);
       } else {
-        console.warn('Site not found by cms_code:', planData.cms_code);
+        console.warn('Site not found by cms_code:', weeklyPlanData.cms_code);
       }
     }
 
     // 다중 지점 사용자(송기정, 김태현)의 경우 branch에 따라 이름 suffix 추가
     let createdByName = userName;
-    if ((userName === '송기정' || userName === '김태현') && planData.branch) {
-      if (planData.branch === '인천') {
+    if ((userName === '송기정' || userName === '김태현') && weeklyPlanData.branch) {
+      if (weeklyPlanData.branch === '인천') {
         createdByName = `${userName}(In)`;
       }
       // '본점'인 경우는 suffix 없이 그대로 사용
     }
 
     // branch 필드는 DB에 저장하지 않음 (created_by에 반영됨)
-    const { branch, ...dataToInsert } = planData;
+    const { branch, ...dataToInsert } = weeklyPlanData;
 
     const { data, error } = await supabase
       .from('weekly_plans')
@@ -158,6 +183,18 @@ export async function createWeeklyPlan(planData: any, userId: string, userName: 
       .single();
 
     if (error) throw error;
+
+    // 건설사 영업 상세 정보 저장 (activity_construction_sales가 true이고 details가 있으면)
+    if (data && data.activity_construction_sales && construction_sales_details && construction_sales_details.length > 0) {
+      try {
+        await upsertWeeklyPlanConstructionSalesDetails(data.id, construction_sales_details);
+      } catch (detailError) {
+        console.error('Error saving construction sales details:', detailError);
+        // 상세 정보 저장 실패 시 주간 계획도 롤백
+        await supabase.from('weekly_plans').delete().eq('id', data.id);
+        throw detailError;
+      }
+    }
 
     return { success: true, data };
   } catch (error: any) {
@@ -175,10 +212,13 @@ export async function updateWeeklyPlan(
   userRole?: string
 ) {
   try {
+    // 건설사 영업 상세 정보 분리
+    const { construction_sales_details, ...weeklyPlanData } = planData;
+
     // 권한 확인: admin이면 모두 수정 가능, 일반 사용자는 본인 것만 수정 가능
     const { data: existingPlan, error: fetchError } = await supabase
       .from('weekly_plans')
-      .select('user_id')
+      .select('user_id, activity_construction_sales')
       .eq('id', id)
       .single();
 
@@ -190,41 +230,41 @@ export async function updateWeeklyPlan(
     }
 
     // cms_id 안전장치: cms_id가 없거나 유효하지 않으면 cms_code로 찾기
-    if (planData.cms_id) {
+    if (weeklyPlanData.cms_id) {
       // cms_id가 있으면 검증
       const { data: siteExists, error: checkError } = await supabase
         .from('construction_management')
         .select('id')
-        .eq('id', planData.cms_id)
+        .eq('id', weeklyPlanData.cms_id)
         .single();
 
       if (checkError || !siteExists) {
-        console.error('Site not found by cms_id:', planData.cms_id);
-        planData.cms_id = null;
+        console.error('Site not found by cms_id:', weeklyPlanData.cms_id);
+        weeklyPlanData.cms_id = null;
       }
     }
 
     // cms_id가 없고 cms_code가 있으면 cms_code로 찾기
-    if (!planData.cms_id && planData.cms_code) {
-      console.log('Trying to find site by cms_code:', planData.cms_code);
+    if (!weeklyPlanData.cms_id && weeklyPlanData.cms_code) {
+      console.log('Trying to find site by cms_code:', weeklyPlanData.cms_code);
       const { data: sites, error: searchError } = await supabase
         .from('construction_management')
         .select('id, cms')
-        .eq('cms', planData.cms_code);
+        .eq('cms', weeklyPlanData.cms_code);
 
       if (!searchError && sites && sites.length > 0) {
-        planData.cms_id = sites[0].id;
-        console.log('Found site by cms_code, set cms_id to:', planData.cms_id);
+        weeklyPlanData.cms_id = sites[0].id;
+        console.log('Found site by cms_code, set cms_id to:', weeklyPlanData.cms_id);
       } else {
-        console.warn('Site not found by cms_code:', planData.cms_code);
+        console.warn('Site not found by cms_code:', weeklyPlanData.cms_code);
       }
     }
 
     // 다중 지점 사용자(송기정, 김태현)의 경우 branch에 따라 이름 suffix 추가
     let createdByName = userName;
     let updatedByName = userName;
-    if ((userName === '송기정' || userName === '김태현') && planData.branch) {
-      if (planData.branch === '인천') {
+    if ((userName === '송기정' || userName === '김태현') && weeklyPlanData.branch) {
+      if (weeklyPlanData.branch === '인천') {
         createdByName = `${userName}(In)`;
         updatedByName = `${userName}(In)`;
       }
@@ -232,7 +272,7 @@ export async function updateWeeklyPlan(
     }
 
     // branch 필드는 DB에 저장하지 않음 (created_by와 updated_by에 반영됨)
-    const { branch, ...dataToUpdate } = planData;
+    const { branch, ...dataToUpdate } = weeklyPlanData;
 
     const { data, error } = await supabase
       .from('weekly_plans')
@@ -246,6 +286,34 @@ export async function updateWeeklyPlan(
       .single();
 
     if (error) throw error;
+
+    // 건설사 영업 상세 정보 처리
+    // 1. 이전에는 체크되지 않았는데 이제 체크된 경우 -> 저장
+    // 2. 이전에도 체크되고 지금도 체크된 경우 -> 업데이트
+    // 3. 이전에는 체크되었는데 이제 체크 해제된 경우 -> 삭제
+    if (data.activity_construction_sales) {
+      // 건설사 영업이 체크된 경우
+      if (construction_sales_details && construction_sales_details.length > 0) {
+        // 상세 정보가 있으면 저장/업데이트
+        try {
+          await upsertWeeklyPlanConstructionSalesDetails(id, construction_sales_details);
+        } catch (detailError) {
+          console.error('Error updating construction sales details:', detailError);
+          throw detailError;
+        }
+      } else if (!existingPlan.activity_construction_sales) {
+        // 새로 체크했는데 상세 정보가 없는 경우는 에러
+        console.warn('Construction sales checked but no details provided');
+      }
+    } else if (existingPlan.activity_construction_sales && !data.activity_construction_sales) {
+      // 체크가 해제된 경우 상세 정보 삭제
+      try {
+        await deleteWeeklyPlanConstructionSalesDetails(id);
+      } catch (detailError) {
+        console.error('Error deleting construction sales details:', detailError);
+        // 삭제 실패는 치명적이지 않으므로 계속 진행
+      }
+    }
 
     return { success: true, data };
   } catch (error: any) {

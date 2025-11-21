@@ -1,7 +1,8 @@
 import React, { useState, useEffect } from 'react';
-import { ArrowLeft, Save, Trash2 } from 'lucide-react';
+import { ArrowLeft, Save, Trash2, Edit2, Building2 } from 'lucide-react';
 import { SiteSearchInput } from './SiteSearchInput';
-import type { User, ConstructionSite, WeeklyPlan, WeeklyPlanFormData } from '../types';
+import ConstructionSalesModal from './ConstructionSalesModal';
+import type { User, ConstructionSite, WeeklyPlan, WeeklyPlanFormData, ConstructionSalesDetail } from '../types';
 
 interface WeeklyPlanFormProps {
   user: User;
@@ -17,6 +18,10 @@ export function WeeklyPlanForm({ user, plan, onClose, onSave, onDelete, formType
   const [loading, setLoading] = useState(false);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [error, setError] = useState('');
+
+  // 건설사 영업 모달 상태
+  const [showConstructionSalesModal, setShowConstructionSalesModal] = useState(false);
+  const [constructionSalesDetail, setConstructionSalesDetail] = useState<ConstructionSalesDetail | undefined>(undefined);
 
   // Check if user is multi-branch (송기정 or 김태현)
   const isMultiBranchUser = user.name === '송기정' || user.name === '김태현';
@@ -47,6 +52,7 @@ export function WeeklyPlanForm({ user, plan, onClose, onSave, onDelete, formType
     target_order_profit_contribution: plan?.target_order_profit_contribution || 0,
     target_order_total: plan?.target_order_total || 0,
     target_collection: plan?.target_collection || 0,
+    construction_sales_details: plan?.construction_sales_details || undefined,
   });
 
   // Update formData when plan prop changes (for edit mode)
@@ -67,11 +73,17 @@ export function WeeklyPlanForm({ user, plan, onClose, onSave, onDelete, formType
         target_order_profit_contribution: plan.target_order_profit_contribution || 0,
         target_order_total: plan.target_order_total || 0,
         target_collection: plan.target_collection || 0,
+        construction_sales_details: plan.construction_sales_details || undefined,
       });
 
       // Update selected branch based on created_by suffix
       if (isMultiBranchUser) {
         setSelectedBranch(plan.created_by?.includes('(In)') ? '인천' : '본점');
+      }
+
+      // 건설사 영업 상세 정보 설정
+      if (plan.construction_sales_details && plan.construction_sales_details.length > 0) {
+        setConstructionSalesDetail(plan.construction_sales_details[0]);
       }
     } else {
       // Reset form for new entry
@@ -90,12 +102,16 @@ export function WeeklyPlanForm({ user, plan, onClose, onSave, onDelete, formType
         target_order_profit_contribution: 0,
         target_order_total: 0,
         target_collection: 0,
+        construction_sales_details: undefined,
       });
 
       // Reset branch to default for new entry
       if (isMultiBranchUser) {
         setSelectedBranch(user.branch || '인천');
       }
+
+      // 건설사 영업 상세 정보 초기화
+      setConstructionSalesDetail(undefined);
     }
   }, [plan, isMultiBranchUser, user.branch]);
 
@@ -114,6 +130,23 @@ export function WeeklyPlanForm({ user, plan, onClose, onSave, onDelete, formType
 
   const handleCheckboxChange = (field: keyof WeeklyPlanFormData) => {
     const newValue = !formData[field];
+
+    // 건설사 영업 체크박스 처리
+    if (field === 'activity_construction_sales') {
+      if (newValue) {
+        // 체크 시 모달 열기
+        setShowConstructionSalesModal(true);
+      } else {
+        // 체크 해제 시 상세 정보 삭제
+        setConstructionSalesDetail(undefined);
+        setFormData({
+          ...formData,
+          [field]: newValue,
+          construction_sales_details: undefined,
+        });
+        return;
+      }
+    }
 
     // 다른 활동 구분 체크박스 처리
     const updatedFormData = {
@@ -173,6 +206,30 @@ export function WeeklyPlanForm({ user, plan, onClose, onSave, onDelete, formType
   const formatNumber = (value: number | undefined): string => {
     if (!value) return '0';
     return value.toLocaleString('ko-KR');
+  };
+
+  // 건설사 영업 상세 정보 저장
+  const handleConstructionSalesDetailSave = (detail: ConstructionSalesDetail) => {
+    setConstructionSalesDetail(detail);
+    setFormData({
+      ...formData,
+      activity_construction_sales: true,
+      construction_sales_details: [detail],
+    });
+    setShowConstructionSalesModal(false);
+  };
+
+  // 건설사 영업 모달 닫기 (취소)
+  const handleConstructionSalesModalClose = () => {
+    // 상세 정보가 없으면 체크 해제
+    if (!constructionSalesDetail) {
+      setFormData({
+        ...formData,
+        activity_construction_sales: false,
+        construction_sales_details: undefined,
+      });
+    }
+    setShowConstructionSalesModal(false);
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -496,6 +553,62 @@ export function WeeklyPlanForm({ user, plan, onClose, onSave, onDelete, formType
           </div>
         )}
 
+        {/* 건설사 영업 상세 정보 (활동 계획이고 건설사 영업이 체크되고 상세 정보가 있을 때만 표시) */}
+        {formType === 'activity' && formData.activity_construction_sales && constructionSalesDetail && (
+          <div className="card space-y-4">
+            <div className="flex items-center justify-between border-b border-gray-border pb-3">
+              <h3 className="text-lg font-semibold text-white flex items-center">
+                <Building2 className="h-5 w-5 mr-2 text-primary" />
+                건설사 영업 정보
+              </h3>
+              <button
+                type="button"
+                onClick={() => setShowConstructionSalesModal(true)}
+                disabled={loading}
+                className="btn-secondary flex items-center space-x-2 text-sm"
+              >
+                <Edit2 className="h-4 w-4" />
+                <span>편집</span>
+              </button>
+            </div>
+
+            <div className="bg-gradient-to-br from-blue-900/20 to-bg-darker p-4 rounded-lg border border-blue-500/30">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-xs font-medium text-gray-text mb-1">건설사</label>
+                  <div className="text-white font-medium">
+                    {constructionSalesDetail.construction?.company_name || ''}
+                  </div>
+                </div>
+                <div>
+                  <label className="block text-xs font-medium text-gray-text mb-1">품목</label>
+                  <div className="text-white font-medium">
+                    {constructionSalesDetail.item?.item_id} - {constructionSalesDetail.item?.item_name || ''}
+                  </div>
+                </div>
+                <div>
+                  <label className="block text-xs font-medium text-gray-text mb-1">활동 내역</label>
+                  <div className="flex space-x-3">
+                    {constructionSalesDetail.has_quote_submitted && (
+                      <span className="text-xs bg-blue-500/20 text-blue-400 px-2 py-1 rounded">
+                        견적 제출
+                      </span>
+                    )}
+                    {constructionSalesDetail.has_meeting_conducted && (
+                      <span className="text-xs bg-blue-500/20 text-blue-400 px-2 py-1 rounded">
+                        미팅 진행
+                      </span>
+                    )}
+                    {!constructionSalesDetail.has_quote_submitted && !constructionSalesDetail.has_meeting_conducted && (
+                      <span className="text-xs text-gray-text">-</span>
+                    )}
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+
         {/* 현장 검색 (활동 계획이고 현장 추가 영업 또는 현장 지원이 체크된 경우에만) */}
         {formType === 'activity' && (formData.activity_site_additional_sales || formData.activity_site_support) && (
           <div className="card space-y-4">
@@ -699,6 +812,14 @@ export function WeeklyPlanForm({ user, plan, onClose, onSave, onDelete, formType
           </div>
         </div>
       )}
+
+      {/* 건설사 영업 상세 정보 모달 */}
+      <ConstructionSalesModal
+        isOpen={showConstructionSalesModal}
+        onClose={handleConstructionSalesModalClose}
+        onSave={handleConstructionSalesDetailSave}
+        initialDetails={constructionSalesDetail}
+      />
     </div>
   );
 }

@@ -84,6 +84,7 @@ export interface WeeklyPlan {
   target_order_total?: number;
   target_collection?: number;
   plan_type?: 'activity' | 'target' | 'both';
+  construction_sales_details?: ConstructionSalesDetail[];
   created_at: string;
   updated_at: string;
   created_by: string;
@@ -106,6 +107,7 @@ export interface WeeklyPlanFormData {
   target_order_total?: number;
   target_collection?: number;
   plan_type?: 'activity' | 'target' | 'both';
+  construction_sales_details?: ConstructionSalesDetail[];
 }
 
 export interface WeeklyPlanFilters {

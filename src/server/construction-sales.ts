@@ -187,6 +187,148 @@ export async function deleteConstructionSalesDetails(
 }
 
 /**
+ * 특정 주간 업무 계획의 건설사 영업 상세 정보 조회
+ */
+export async function getWeeklyPlanConstructionSalesDetails(
+  weeklyPlanId: number
+): Promise<ConstructionSalesDetail[]> {
+  const { data, error } = await supabase
+    .from('weekly_plan_construction_sales')
+    .select(`
+      id,
+      weekly_plan_id,
+      construction_id,
+      item_id,
+      has_quote_submitted,
+      has_meeting_conducted,
+      created_at,
+      updated_at,
+      constructions!inner(
+        id,
+        company_name
+      ),
+      items!inner(
+        id,
+        item_id,
+        item_name
+      )
+    `)
+    .eq('weekly_plan_id', weeklyPlanId)
+    .order('id', { ascending: true });
+
+  if (error) {
+    console.error('Error fetching weekly plan construction sales details:', error);
+    throw error;
+  }
+
+  // 데이터 형식 변환
+  return (data || []).map(item => ({
+    id: item.id,
+    weekly_plan_id: item.weekly_plan_id,
+    construction_id: item.construction_id,
+    item_id: item.item_id,
+    has_quote_submitted: item.has_quote_submitted,
+    has_meeting_conducted: item.has_meeting_conducted,
+    created_at: item.created_at,
+    updated_at: item.updated_at,
+    construction: item.constructions,
+    item: item.items
+  }));
+}
+
+/**
+ * 주간 계획 건설사 영업 상세 정보 저장/수정 (upsert)
+ */
+export async function upsertWeeklyPlanConstructionSalesDetails(
+  weeklyPlanId: number,
+  details: Omit<ConstructionSalesDetail, 'id' | 'weekly_plan_id' | 'created_at' | 'updated_at'>[]
+): Promise<ConstructionSalesDetail[]> {
+  // 트랜잭션 처리를 위해 먼저 기존 데이터 삭제
+  const { error: deleteError } = await supabase
+    .from('weekly_plan_construction_sales')
+    .delete()
+    .eq('weekly_plan_id', weeklyPlanId);
+
+  if (deleteError) {
+    console.error('Error deleting existing weekly plan construction sales details:', deleteError);
+    throw deleteError;
+  }
+
+  // 새 데이터가 없으면 빈 배열 반환
+  if (!details || details.length === 0) {
+    return [];
+  }
+
+  // 새 데이터 삽입
+  const insertData = details.map(detail => ({
+    weekly_plan_id: weeklyPlanId,
+    construction_id: detail.construction_id,
+    item_id: detail.item_id,
+    has_quote_submitted: detail.has_quote_submitted || false,
+    has_meeting_conducted: detail.has_meeting_conducted || false
+  }));
+
+  const { data, error: insertError } = await supabase
+    .from('weekly_plan_construction_sales')
+    .insert(insertData)
+    .select(`
+      id,
+      weekly_plan_id,
+      construction_id,
+      item_id,
+      has_quote_submitted,
+      has_meeting_conducted,
+      created_at,
+      updated_at,
+      constructions!inner(
+        id,
+        company_name
+      ),
+      items!inner(
+        id,
+        item_id,
+        item_name
+      )
+    `);
+
+  if (insertError) {
+    console.error('Error inserting weekly plan construction sales details:', insertError);
+    throw insertError;
+  }
+
+  // 데이터 형식 변환
+  return (data || []).map(item => ({
+    id: item.id,
+    weekly_plan_id: item.weekly_plan_id,
+    construction_id: item.construction_id,
+    item_id: item.item_id,
+    has_quote_submitted: item.has_quote_submitted,
+    has_meeting_conducted: item.has_meeting_conducted,
+    created_at: item.created_at,
+    updated_at: item.updated_at,
+    construction: item.constructions,
+    item: item.items
+  }));
+}
+
+/**
+ * 주간 계획 건설사 영업 상세 정보 삭제
+ */
+export async function deleteWeeklyPlanConstructionSalesDetails(
+  weeklyPlanId: number
+): Promise<void> {
+  const { error } = await supabase
+    .from('weekly_plan_construction_sales')
+    .delete()
+    .eq('weekly_plan_id', weeklyPlanId);
+
+  if (error) {
+    console.error('Error deleting weekly plan construction sales details:', error);
+    throw error;
+  }
+}
+
+/**
  * 건설사별 영업 활동 통계 조회
  */
 export async function getConstructionSalesStats(
