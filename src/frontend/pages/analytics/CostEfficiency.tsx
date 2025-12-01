@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { RefreshCw } from 'lucide-react';
+import { RefreshCw, DollarSign } from 'lucide-react';
 import type { User, MonthlyCostEfficiency, CostEfficiencySummary } from '../../types';
 
 interface CostEfficiencyProps {
@@ -115,7 +115,10 @@ export default function CostEfficiency({ user }: CostEfficiencyProps) {
 
   return (
     <div className="page-container">
-      <h1 className="page-title">원가 투입 효율 관리</h1>
+      <h1 className="page-title flex items-center gap-2">
+        <DollarSign className="h-6 w-6" />
+        원가 투입 효율 관리
+      </h1>
       <p className="page-description">월별 과투입 현황 및 확정 매출을 확인합니다.</p>
 
       {/* 필터 영역 */}

@@ -10,10 +10,10 @@ export default function OverInvestment({ user }: OverInvestmentProps) {
   return (
     <div className="p-6">
       <div className="mb-6">
-        <div className="flex items-center gap-3 mb-2">
-          <AlertTriangle className="h-8 w-8 text-yellow-500" />
-          <h1 className="text-2xl font-bold text-white">월별 과투입 현황</h1>
-        </div>
+        <h1 className="page-title flex items-center gap-2">
+          <AlertTriangle className="h-6 w-6" />
+          월별 과투입 현황
+        </h1>
       </div>
 
       <div className="bg-bg-card rounded-lg border border-gray-border p-12 text-center">

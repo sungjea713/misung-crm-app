@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Plus, RefreshCw } from 'lucide-react';
+import { Plus, RefreshCw, FileCheck } from 'lucide-react';
 import { InvoiceRecordForm } from '../../components/InvoiceRecordForm';
 import { InvoiceRecordTable } from '../../components/InvoiceRecordTable';
 import type { User, InvoiceRecord, InvoiceRecordFormData } from '../../types';
@@ -174,7 +174,10 @@ export default function Invoice({ user }: InvoicePageProps) {
           {/* Header */}
           <div className="flex items-center justify-between mb-6">
             <div>
-              <h1 className="page-title">계산서 발행</h1>
+              <h1 className="page-title flex items-center gap-2">
+                <FileCheck className="h-6 w-6" />
+                계산서 발행
+              </h1>
               <p className="page-description">계산서를 발행하고 관리합니다.</p>
             </div>
             <button onClick={handleNewForm} className="btn-primary flex items-center gap-2">

@@ -67,15 +67,17 @@ export async function getSalesActivities(
   try {
     const { user_id, created_by, year, month, activity_type, site_type, page = 1, limit = 20 } = filters;
 
-    // Calculate date range for the month
-    const startDate = new Date(year, month - 1, 1);
-    const endDate = new Date(year, month, 0, 23, 59, 59);
+    // Calculate date range for the month (한국 시간 기준)
+    // DATE 타입은 시간대 영향을 받지 않으므로 YYYY-MM-DD 형식으로 직접 생성
+    const startDateStr = `${year}-${String(month).padStart(2, '0')}-01`;
+    const lastDay = new Date(year, month, 0).getDate();
+    const endDateStr = `${year}-${String(month).padStart(2, '0')}-${String(lastDay).padStart(2, '0')}`;
 
     let query = supabase
       .from('sales_activities')
       .select('*, users!inner(name, department)', { count: 'exact' })
-      .gte('activity_date', startDate.toISOString().split('T')[0])
-      .lte('activity_date', endDate.toISOString().split('T')[0])
+      .gte('activity_date', startDateStr)
+      .lte('activity_date', endDateStr)
       .order('activity_date', { ascending: false })
       .order('id', { ascending: false });
 

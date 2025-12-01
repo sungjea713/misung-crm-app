@@ -180,7 +180,10 @@ export default function OrderAchievement({ user }: OrderAchievementProps) {
   if (loading && !data) {
     return (
       <div className="page-container">
-        <h1 className="page-title">수주 실적 및 목표 달성률</h1>
+        <h1 className="page-title flex items-center gap-2">
+          <Target className="h-6 w-6" />
+          수주 실적 및 목표 달성률
+        </h1>
         <div className="card">
           <div className="flex items-center justify-center py-20">
             <RefreshCw className="h-8 w-8 animate-spin text-primary" />
@@ -194,7 +197,10 @@ export default function OrderAchievement({ user }: OrderAchievementProps) {
     <div className="page-container">
       <div className="flex items-center justify-between mb-6">
         <div>
-          <h1 className="page-title">수주 실적 및 목표 달성률</h1>
+          <h1 className="page-title flex items-center gap-2">
+            <Target className="h-6 w-6" />
+            수주 실적 및 목표 달성률
+          </h1>
           <p className="page-description">월별 수주 실적을 확인합니다.</p>
         </div>
         <button

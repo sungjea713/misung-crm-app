@@ -141,8 +141,10 @@ export async function getActivityStats(year: number, userId?: string, createdBy?
 
     // 주간 계획 집계
     weeklyData?.forEach((plan: any) => {
+      // 한국 시간 기준으로 월 추출 (UTC+9)
       const date = new Date(plan.created_at);
-      const month = date.getMonth() + 1;
+      const kstDate = new Date(date.getTime() + 9 * 60 * 60 * 1000);
+      const month = kstDate.getUTCMonth() + 1;
       const key = `${year}-${month}`;
 
       if (!monthlyMap.has(key)) {
@@ -163,8 +165,10 @@ export async function getActivityStats(year: number, userId?: string, createdBy?
 
     // 일일 업무 집계
     dailyData?.forEach((plan: any) => {
+      // 한국 시간 기준으로 월 추출 (UTC+9)
       const date = new Date(plan.created_at);
-      const month = date.getMonth() + 1;
+      const kstDate = new Date(date.getTime() + 9 * 60 * 60 * 1000);
+      const month = kstDate.getUTCMonth() + 1;
       const key = `${year}-${month}`;
 
       if (!monthlyMap.has(key)) {

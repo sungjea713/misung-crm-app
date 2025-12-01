@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Plus, RefreshCw } from 'lucide-react';
+import { Plus, RefreshCw, Calendar } from 'lucide-react';
 import { DailyPlanForm } from '../../components/DailyPlanForm';
 import { DailyPlanTable } from '../../components/DailyPlanTable';
 import type { User, DailyPlan, DailyPlanFormData } from '../../types';
@@ -209,7 +209,10 @@ export default function DailyPlanPage({ user }: DailyPlanPageProps) {
         <>
           <div className="flex items-center justify-between mb-6">
             <div>
-              <h1 className="page-title mb-2">일일 업무 일지</h1>
+              <h1 className="page-title flex items-center gap-2 mb-2">
+                <Calendar className="h-6 w-6" />
+                일일 업무 일지
+              </h1>
               <p className="page-description">주간 단위 업무 계획을 작성하고 관리합니다.</p>
             </div>
             <button onClick={handleNewForm} className="btn-primary flex items-center space-x-2">

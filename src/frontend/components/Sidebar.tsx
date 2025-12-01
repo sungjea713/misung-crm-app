@@ -20,6 +20,8 @@ import {
   AlertTriangle,
   CheckCircle,
   TrendingDown,
+  Building2,
+  Award,
 } from 'lucide-react';
 
 interface SidebarProps {
@@ -118,7 +120,7 @@ const menuItems: MenuItem[] = [
       {
         id: 'construction-sales-score',
         label: '건설사 영업 스코어',
-        icon: TrendingUp,
+        icon: Award,
         path: '/analytics/construction-sales-score',
       },
     ],

@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { TrendingUp, RefreshCw, Building2, ChevronDown, ChevronUp } from 'lucide-react';
+import { TrendingUp, RefreshCw, Building2, ChevronDown, ChevronUp, Award } from 'lucide-react';
 import type { User, ConstructionScoreStats, ConstructionItemScore } from '../../types';
 
 interface ConstructionSalesScoreProps {
@@ -172,7 +172,10 @@ export default function ConstructionSalesScore({ user }: ConstructionSalesScoreP
     <div className="page-container">
       <div className="flex items-center justify-between mb-6">
         <div>
-          <h1 className="page-title mb-2">건설사 영업 스코어</h1>
+          <h1 className="page-title flex items-center gap-2 mb-2">
+            <Award className="h-6 w-6" />
+            건설사 영업 스코어
+          </h1>
           <p className="page-description">
             건설사별 영업 활동을 아이템 단위로 분석합니다.
           </p>

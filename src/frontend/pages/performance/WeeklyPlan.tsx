@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Plus, RefreshCw } from 'lucide-react';
+import { Plus, RefreshCw, CalendarDays } from 'lucide-react';
 import { WeeklyPlanForm } from '../../components/WeeklyPlanForm';
 import { WeeklyPlanTable } from '../../components/WeeklyPlanTable';
 import type { User, WeeklyPlan, WeeklyPlanFormData } from '../../types';
@@ -219,7 +219,10 @@ export default function WeeklyPlanPage({ user }: WeeklyPlanPageProps) {
       {viewMode === 'list' ? (
         <>
           <div className="mb-6">
-            <h1 className="page-title mb-2">주간 업무 계획</h1>
+            <h1 className="page-title flex items-center gap-2 mb-2">
+              <CalendarDays className="h-6 w-6" />
+              주간 업무 계획
+            </h1>
             <p className="page-description">주간 단위 업무 계획을 작성하고 관리합니다.</p>
           </div>
 

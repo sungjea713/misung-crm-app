@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { RefreshCw, TrendingUp, Building2, MapPin, Wrench } from 'lucide-react';
+import { RefreshCw, TrendingUp, Building2, MapPin, Wrench, Activity } from 'lucide-react';
 import type { User, MonthlyActivityStats, ActivitySummary } from '../../types';
 
 interface ActivityStatusProps {
@@ -134,7 +134,10 @@ export default function ActivityStatus({ user }: ActivityStatusProps) {
     <div className="page-container">
       <div className="flex items-center justify-between mb-6">
         <div>
-          <h1 className="page-title mb-2">영업/현장관리 실행 현황</h1>
+          <h1 className="page-title flex items-center gap-2 mb-2">
+            <Activity className="h-6 w-6" />
+            영업/현장관리 실행 현황
+          </h1>
           <p className="page-description">주간 계획 대비 일일 실행 현황을 확인합니다.</p>
         </div>
       </div>

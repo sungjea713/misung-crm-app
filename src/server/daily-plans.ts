@@ -48,9 +48,11 @@ export async function getDailyPlans(filters: {
     const { user_id, created_by, year, month, page = 1, limit = 20 } = filters;
     const offset = (page - 1) * limit;
 
-    // 날짜 범위 계산
-    const startDate = new Date(year, month - 1, 1);
-    const endDate = new Date(year, month, 0, 23, 59, 59);
+    // 날짜 범위 계산 (한국 시간 기준 UTC+9)
+    // 해당 월의 1일 00:00:00 KST를 UTC로 변환
+    const startDate = new Date(Date.UTC(year, month - 1, 1, -9, 0, 0));
+    // 해당 월의 마지막 날 23:59:59 KST를 UTC로 변환
+    const endDate = new Date(Date.UTC(year, month, 0, 14, 59, 59, 999));
 
     let query = supabase
       .from('daily_plans')

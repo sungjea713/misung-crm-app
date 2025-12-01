@@ -137,8 +137,10 @@ export async function getCollectionStats(
     weeklyPlansData?.forEach((row: any) => {
       if (row.created_at && row.target_collection) {
         try {
+          // 한국 시간 기준으로 월 추출 (UTC+9)
           const date = new Date(row.created_at);
-          const month = date.getMonth() + 1; // 1-12
+          const kstDate = new Date(date.getTime() + 9 * 60 * 60 * 1000);
+          const month = kstDate.getUTCMonth() + 1;
           if (month >= 1 && month <= 12) {
             const current = monthlyMap.get(month)!;
             current.targetCollection += row.target_collection || 0;
@@ -153,8 +155,10 @@ export async function getCollectionStats(
     collectionsData?.forEach((row: any) => {
       if (row.collection_date && row.collection_amount) {
         try {
+          // 한국 시간 기준으로 월 추출 (UTC+9)
           const date = new Date(row.collection_date);
-          const month = date.getMonth() + 1; // 1-12
+          const kstDate = new Date(date.getTime() + 9 * 60 * 60 * 1000);
+          const month = kstDate.getUTCMonth() + 1;
           if (month >= 1 && month <= 12) {
             const current = monthlyMap.get(month)!;
             current.userCollection += row.collection_amount || 0;

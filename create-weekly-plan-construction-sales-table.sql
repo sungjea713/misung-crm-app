@@ -39,10 +39,8 @@ CREATE POLICY "Insert own weekly plan construction sales"
   ON weekly_plan_construction_sales FOR INSERT
   WITH CHECK (
     EXISTS (
-      SELECT 1 FROM weekly_plans wp
-      JOIN users u ON wp.user_id = u.id
-      WHERE wp.id = weekly_plan_construction_sales.weekly_plan_id
-        AND u.id = auth.uid()
+      SELECT 1 FROM weekly_plans
+      WHERE id = weekly_plan_id
     )
   );
 

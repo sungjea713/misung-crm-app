@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Plus, RefreshCw, FileSpreadsheet, Trash2, Edit } from 'lucide-react';
+import { Plus, RefreshCw, FileSpreadsheet, Trash2, Edit, CheckCircle } from 'lucide-react';
 import MonthlyCollectionUpload from '../../components/MonthlyCollectionUpload';
 import type { User, MonthlyCollectionRow, MonthlyCollection } from '../../types';
 
@@ -154,7 +154,10 @@ export default function MonthlyCollectionPage({ user }: MonthlyCollectionPagePro
       {viewMode === 'list' ? (
         <>
           <div className="mb-6">
-            <h1 className="page-title mb-2">월별 수금/미수금 현황</h1>
+            <h1 className="page-title flex items-center gap-2 mb-2">
+              <CheckCircle className="h-6 w-6" />
+              월별 수금/미수금 현황
+            </h1>
             <p className="page-description">월별 수금 및 미수금 현황을 관리합니다.</p>
           </div>
 

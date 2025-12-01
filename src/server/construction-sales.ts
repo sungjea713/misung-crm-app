@@ -7,12 +7,26 @@ import type {
 
 const supabaseUrl = process.env.SUPABASE_URL!;
 const supabaseKey = process.env.SUPABASE_ANON_KEY!;
-const supabase = createClient(supabaseUrl, supabaseKey);
+
+// 인증 토큰을 받아서 사용하는 클라이언트 생성 함수
+function createAuthClient(accessToken?: string) {
+  if (accessToken) {
+    return createClient(supabaseUrl, supabaseKey, {
+      global: {
+        headers: {
+          Authorization: `Bearer ${accessToken}`
+        }
+      }
+    });
+  }
+  return createClient(supabaseUrl, supabaseKey);
+}
 
 /**
  * 모든 건설사 목록 조회
  */
-export async function getConstructions(): Promise<Construction[]> {
+export async function getConstructions(accessToken?: string): Promise<Construction[]> {
+  const supabase = createAuthClient(accessToken);
   const { data, error } = await supabase
     .from('constructions')
     .select('*')
@@ -29,7 +43,8 @@ export async function getConstructions(): Promise<Construction[]> {
 /**
  * 모든 품목 목록 조회
  */
-export async function getItems(): Promise<Item[]> {
+export async function getItems(accessToken?: string): Promise<Item[]> {
+  const supabase = createAuthClient(accessToken);
   const { data, error } = await supabase
     .from('items')
     .select('*')
@@ -47,8 +62,10 @@ export async function getItems(): Promise<Item[]> {
  * 특정 일일 업무 일지의 건설사 영업 상세 정보 조회
  */
 export async function getConstructionSalesDetails(
-  dailyPlanId: number
+  dailyPlanId: number,
+  accessToken?: string
 ): Promise<ConstructionSalesDetail[]> {
+  const supabase = createAuthClient(accessToken);
   const { data, error } = await supabase
     .from('daily_plan_construction_sales')
     .select(`
@@ -99,8 +116,10 @@ export async function getConstructionSalesDetails(
  */
 export async function upsertConstructionSalesDetails(
   dailyPlanId: number,
-  details: Omit<ConstructionSalesDetail, 'id' | 'daily_plan_id' | 'created_at' | 'updated_at'>[]
+  details: Omit<ConstructionSalesDetail, 'id' | 'daily_plan_id' | 'created_at' | 'updated_at'>[],
+  accessToken?: string
 ): Promise<ConstructionSalesDetail[]> {
+  const supabase = createAuthClient(accessToken);
   // 트랜잭션 처리를 위해 먼저 기존 데이터 삭제
   const { error: deleteError } = await supabase
     .from('daily_plan_construction_sales')
@@ -190,8 +209,10 @@ export async function deleteConstructionSalesDetails(
  * 특정 주간 업무 계획의 건설사 영업 상세 정보 조회
  */
 export async function getWeeklyPlanConstructionSalesDetails(
-  weeklyPlanId: number
+  weeklyPlanId: number,
+  accessToken?: string
 ): Promise<ConstructionSalesDetail[]> {
+  const supabase = createAuthClient(accessToken);
   const { data, error } = await supabase
     .from('weekly_plan_construction_sales')
     .select(`
@@ -241,8 +262,10 @@ export async function getWeeklyPlanConstructionSalesDetails(
  */
 export async function upsertWeeklyPlanConstructionSalesDetails(
   weeklyPlanId: number,
-  details: Omit<ConstructionSalesDetail, 'id' | 'weekly_plan_id' | 'created_at' | 'updated_at'>[]
+  details: Omit<ConstructionSalesDetail, 'id' | 'weekly_plan_id' | 'created_at' | 'updated_at'>[],
+  accessToken?: string
 ): Promise<ConstructionSalesDetail[]> {
+  const supabase = createAuthClient(accessToken);
   // 트랜잭션 처리를 위해 먼저 기존 데이터 삭제
   const { error: deleteError } = await supabase
     .from('weekly_plan_construction_sales')
@@ -315,8 +338,10 @@ export async function upsertWeeklyPlanConstructionSalesDetails(
  * 주간 계획 건설사 영업 상세 정보 삭제
  */
 export async function deleteWeeklyPlanConstructionSalesDetails(
-  weeklyPlanId: number
+  weeklyPlanId: number,
+  accessToken?: string
 ): Promise<void> {
+  const supabase = createAuthClient(accessToken);
   const { error } = await supabase
     .from('weekly_plan_construction_sales')
     .delete()

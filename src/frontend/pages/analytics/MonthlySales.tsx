@@ -156,7 +156,10 @@ export default function MonthlySales({ user }: MonthlySalesProps) {
     <div className="page-container">
       <div className="flex items-center justify-between mb-6">
         <div>
-          <h1 className="page-title mb-2">월별 매출 및 목표달성</h1>
+          <h1 className="page-title flex items-center gap-2 mb-2">
+            <TrendingUp className="h-6 w-6" />
+            월별 매출 및 목표달성
+          </h1>
           <p className="page-description">월별 확정 매출, 매입, 이익 현황을 확인합니다.</p>
         </div>
       </div>

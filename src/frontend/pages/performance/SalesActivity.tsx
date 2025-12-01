@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Plus, RefreshCw, ChevronLeft, ChevronRight } from 'lucide-react';
+import { Plus, RefreshCw, ChevronLeft, ChevronRight, Users } from 'lucide-react';
 import { SalesActivityForm } from '../../components/SalesActivityForm';
 import { SalesActivityTable } from '../../components/SalesActivityTable';
 import type { User, SalesActivity, SalesActivityFormData } from '../../types';
@@ -260,7 +260,10 @@ export default function SalesActivity({ user }: SalesActivityProps) {
       {/* Header */}
       <div className="flex items-center justify-between mb-6">
         <div>
-          <h1 className="page-title">영업 활동</h1>
+          <h1 className="page-title flex items-center gap-2">
+            <Users className="h-6 w-6" />
+            영업 활동
+          </h1>
           <p className="page-description">영업 활동 내역을 관리합니다</p>
         </div>
         <button onClick={handleCreateNew} className="btn-primary flex items-center gap-2">

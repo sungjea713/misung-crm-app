@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { RefreshCw } from 'lucide-react';
+import { RefreshCw, CreditCard } from 'lucide-react';
 import type { User, MonthlyCollectionStats, CollectionStatsSummary } from '../../types';
 
 interface CollectionStatusProps {
@@ -115,7 +115,10 @@ export default function CollectionStatus({ user }: CollectionStatusProps) {
 
   return (
     <div className="page-container">
-      <h1 className="page-title">수금 실적 및 미수금 관리 현황</h1>
+      <h1 className="page-title flex items-center gap-2">
+        <CreditCard className="h-6 w-6" />
+        수금 실적 및 미수금 관리 현황
+      </h1>
       <p className="page-description">월별 수금 실적과 미수금 현황을 확인합니다.</p>
 
       {/* 필터 영역 */}

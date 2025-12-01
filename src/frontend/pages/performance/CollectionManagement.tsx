@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Plus, RefreshCw } from 'lucide-react';
+import { Plus, RefreshCw, CircleDollarSign } from 'lucide-react';
 import { CollectionRecordForm } from '../../components/CollectionRecordForm';
 import { CollectionRecordTable } from '../../components/CollectionRecordTable';
 import type { User, CollectionRecord, CollectionRecordFormData, CollectionRecordFilters } from '../../types';
@@ -167,7 +167,10 @@ export default function CollectionManagement({ user }: CollectionManagementProps
           {/* Header */}
           <div className="flex items-center justify-between mb-6">
             <div>
-              <h1 className="page-title">수금 현황</h1>
+              <h1 className="page-title flex items-center gap-2">
+                <CircleDollarSign className="h-6 w-6" />
+                수금 현황
+              </h1>
               <p className="page-description">수금 내역을 등록하고 미수금 잔액을 관리합니다.</p>
             </div>
             <button onClick={handleNewRecord} className="btn-primary flex items-center gap-2">

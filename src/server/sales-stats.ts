@@ -123,8 +123,10 @@ export async function getSalesStats(year: number, userName: string, showAllBranc
     inpaysData?.forEach((row: any) => {
       if (row.sales_date && row.supply_price) {
         try {
+          // 한국 시간 기준으로 월 추출 (UTC+9)
           const date = new Date(row.sales_date);
-          const month = date.getMonth() + 1; // 1-12
+          const kstDate = new Date(date.getTime() + 9 * 60 * 60 * 1000);
+          const month = kstDate.getUTCMonth() + 1;
           if (month >= 1 && month <= 12) {
             const current = monthlyMap.get(month)!;
             current.revenue += row.supply_price || 0;
@@ -139,8 +141,10 @@ export async function getSalesStats(year: number, userName: string, showAllBranc
     outpaysData?.forEach((row: any) => {
       if (row.purchase_date && row.supply_price) {
         try {
+          // 한국 시간 기준으로 월 추출 (UTC+9)
           const date = new Date(row.purchase_date);
-          const month = date.getMonth() + 1; // 1-12
+          const kstDate = new Date(date.getTime() + 9 * 60 * 60 * 1000);
+          const month = kstDate.getUTCMonth() + 1;
           if (month >= 1 && month <= 12) {
             const current = monthlyMap.get(month)!;
             current.cost += row.supply_price || 0;
@@ -155,8 +159,10 @@ export async function getSalesStats(year: number, userName: string, showAllBranc
     weeklyPlansData?.forEach((row: any) => {
       if (row.created_at && row.target_sales) {
         try {
+          // 한국 시간 기준으로 월 추출 (UTC+9)
           const date = new Date(row.created_at);
-          const month = date.getMonth() + 1; // 1-12
+          const kstDate = new Date(date.getTime() + 9 * 60 * 60 * 1000);
+          const month = kstDate.getUTCMonth() + 1;
           if (month >= 1 && month <= 12) {
             const current = monthlyMap.get(month)!;
             current.targetSales += row.target_sales || 0;

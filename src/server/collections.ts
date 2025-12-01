@@ -71,12 +71,17 @@ export async function getCollectionRecords(filters: CollectionRecordFilters) {
   try {
     const { user_id, created_by, year, month, page = 1, limit = 20 } = filters;
 
-    // Build query
+    // Build query (한국 시간 기준)
+    // DATE 타입은 시간대 영향을 받지 않으므로 YYYY-MM-DD 형식으로 직접 생성
+    const startDateStr = `${year}-${String(month).padStart(2, '0')}-01`;
+    const lastDay = new Date(year, month, 0).getDate();
+    const endDateStr = `${year}-${String(month).padStart(2, '0')}-${String(lastDay).padStart(2, '0')}`;
+
     let query = supabase
       .from('collections')
       .select('*, users(name, department)', { count: 'exact' })
-      .gte('collection_date', `${year}-${String(month).padStart(2, '0')}-01`)
-      .lt('collection_date', month === 12 ? `${year + 1}-01-01` : `${year}-${String(month + 1).padStart(2, '0')}-01`)
+      .gte('collection_date', startDateStr)
+      .lte('collection_date', endDateStr)
       .order('collection_date', { ascending: false });
 
     if (user_id) {

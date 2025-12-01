@@ -72,13 +72,11 @@ export async function getInvoiceRecords(filters: {
     const { user_id, year, month, page = 1, limit = 20 } = filters;
     const offset = (page - 1) * limit;
 
-    // 날짜 범위 계산 (invoice_date 기준)
-    const startDate = new Date(year, month - 1, 1);
-    const endDate = new Date(year, month, 0);
-
-    // 날짜를 YYYY-MM-DD 형식으로 변환
-    const startDateStr = startDate.toISOString().split('T')[0];
-    const endDateStr = endDate.toISOString().split('T')[0];
+    // 날짜 범위 계산 (invoice_date 기준, 한국 시간 기준 UTC+9)
+    // DATE 타입은 시간대 영향을 받지 않으므로 YYYY-MM-DD 형식으로 직접 생성
+    const startDateStr = `${year}-${String(month).padStart(2, '0')}-01`;
+    const lastDay = new Date(year, month, 0).getDate();
+    const endDateStr = `${year}-${String(month).padStart(2, '0')}-${String(lastDay).padStart(2, '0')}`;
 
     let query = supabase
       .from('invoice_records')
