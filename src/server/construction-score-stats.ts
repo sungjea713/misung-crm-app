@@ -24,6 +24,10 @@ export async function getConstructionScoreStats(
 ): Promise<ConstructionScoreResponse> {
   try {
     // 1. daily_plans에서 기간 내 건설사 영업 활동이 있는 계획들 조회
+    // 날짜 범위를 한국 시간 기준으로 변환 (UTC+9)
+    const startDateTime = new Date(`${startDate}T00:00:00+09:00`).toISOString();
+    const endDateTime = new Date(`${endDate}T23:59:59+09:00`).toISOString();
+
     let plansQuery = supabase
       .from('daily_plans')
       .select(`
@@ -34,8 +38,8 @@ export async function getConstructionScoreStats(
         activity_construction_sales
       `)
       .eq('activity_construction_sales', true)
-      .gte('created_at', startDate)
-      .lte('created_at', `${endDate}T23:59:59`);
+      .gte('created_at', startDateTime)
+      .lte('created_at', endDateTime);
 
     // 사용자 필터링
     if (createdBy) {

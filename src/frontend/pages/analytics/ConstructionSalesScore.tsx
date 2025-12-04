@@ -14,7 +14,7 @@ export default function ConstructionSalesScore({ user }: ConstructionSalesScoreP
   const [expandedMeetingRows, setExpandedMeetingRows] = useState<Set<string>>(new Set());
 
   // 필터 상태
-  const [selectedUser, setSelectedUser] = useState<string>(user.id);
+  const [selectedUser, setSelectedUser] = useState<string>(user.role === 'admin' ? '' : user.id);
   const [selectedCreatedBy, setSelectedCreatedBy] = useState<string>('');
   const [selectedBranch, setSelectedBranch] = useState<'all' | '본점' | '인천'>('all');
   const [year, setYear] = useState(new Date().getFullYear());
@@ -80,6 +80,12 @@ export default function ConstructionSalesScore({ user }: ConstructionSalesScoreP
           params.append('created_by', selectedCreatedBy);
         } else if (selectedUser) {
           params.append('user_id', selectedUser);
+        } else {
+          // 관리자이고 사용자가 선택되지 않았으면 데이터를 불러오지 않음
+          setScores([]);
+          setSummary({ total_constructions: 0, total_activities: 0 });
+          setLoading(false);
+          return;
         }
       } else if (isMultiBranchUser && selectedBranch !== 'all') {
         const createdByValue = selectedBranch === '인천' ? `${user.name}(In)` : user.name;
